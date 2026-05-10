@@ -60,6 +60,19 @@ def get_missing_report(df):
     report = pd.DataFrame({'Missing Count': missing_count, 'Percentage (%)': missing_pct})
     return report[report['Missing Count'] > 0].sort_values(by='Percentage (%)', ascending=False)
 
+
+def apply_cyclic_transformation(df, col, max_val=24):
+    # Garante que a coluna existe e não tem NaNs (ou trata-os)
+    if col in df.columns:
+        # Criar cópia para evitar SettingWithCopyWarning dependendo de como o df foi filtrado
+        temp_col = pd.to_numeric(df[col], errors='coerce')
+        
+        df[f'{col}_sin'] = np.sin(2 * np.pi * temp_col / max_val)
+        df[f'{col}_cos'] = np.cos(2 * np.pi * temp_col / max_val)
+    
+    return df
+
+
 # --- ADVANCED PREPROCESSING ---
 
 def apply_knn_imputation(df, n_neighbors=5):
@@ -80,6 +93,18 @@ def apply_knn_imputation(df, n_neighbors=5):
     df_new.update(imputed_df)
     return df_new
 
+def get_high_correlations(df, threshold=0.7):
+    corr_matrix = df.select_dtypes(include=[np.number]).corr().abs()
+
+    upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(bool))
+    
+    high_corr = [(column, row, upper[column][row]) 
+                 for row in upper.index 
+                 for column in upper.columns 
+                 if upper[column][row] > threshold]
+    
+    result = pd.DataFrame(high_corr, columns=['Variable 1', 'Variable 2', 'Correlation'])
+    return result.sort_values(by='Correlation', ascending=False)
 # --- VISUALIZATION ---
 
 def plot_missing_heatmap(df, title="Missing Values Heatmap"):
