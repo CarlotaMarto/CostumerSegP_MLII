@@ -59,6 +59,10 @@ def get_invalid_years(df, year_col="year_first_transaction"):
     Identifies rows where the transaction year is greater than the current year.
     """
     current_year = datetime.now().year
+
+    if year_col not in df.columns:
+        raise ValueError(f"Column '{year_col}' was not found in the DataFrame.")
+
     invalid_rows = df[df[year_col] > current_year]
 
     return invalid_rows
@@ -83,15 +87,30 @@ def get_education_info(row):
 
     if "bsc." in lower_name:
         education_level = 1
-        clean_name = name.replace("Bsc.", "").replace("bsc.", "").strip()
+        clean_name = (
+            name.replace("Bsc.", "")
+                .replace("bsc.", "")
+                .replace("BSC.", "")
+                .strip()
+        )
 
     elif "msc." in lower_name:
         education_level = 2
-        clean_name = name.replace("Msc.", "").replace("msc.", "").strip()
+        clean_name = (
+            name.replace("Msc.", "")
+                .replace("msc.", "")
+                .replace("MSC.", "")
+                .strip()
+        )
 
     elif "phd." in lower_name:
         education_level = 3
-        clean_name = name.replace("Phd.", "").replace("phd.", "").strip()
+        clean_name = (
+            name.replace("Phd.", "")
+                .replace("phd.", "")
+                .replace("PHD.", "")
+                .strip()
+        )
 
     else:
         education_level = 0
@@ -113,11 +132,13 @@ def apply_cyclic_transformation(df, col, max_val=24):
     """
     df_transformed = df.copy()
 
-    if col in df_transformed.columns:
-        temp_col = pd.to_numeric(df_transformed[col], errors="coerce")
+    if col not in df_transformed.columns:
+        raise ValueError(f"Column '{col}' was not found in the DataFrame.")
 
-        df_transformed[f"{col}_sin"] = np.sin(2 * np.pi * temp_col / max_val)
-        df_transformed[f"{col}_cos"] = np.cos(2 * np.pi * temp_col / max_val)
+    temp_col = pd.to_numeric(df_transformed[col], errors="coerce")
+
+    df_transformed[f"{col}_sin"] = np.sin(2 * np.pi * temp_col / max_val)
+    df_transformed[f"{col}_cos"] = np.cos(2 * np.pi * temp_col / max_val)
 
     return df_transformed
 
@@ -139,7 +160,6 @@ def apply_knn_imputation(df, n_neighbors=5):
         return df_imputed
 
     imputer = KNNImputer(n_neighbors=n_neighbors)
-
     imputed_data = imputer.fit_transform(numeric_df)
 
     imputed_numeric_df = pd.DataFrame(
@@ -188,6 +208,9 @@ def handle_extreme_outliers(df, columns, strategy="cap"):
                 np.where(df_out[col] < lower_bound, lower_bound, df_out[col])
             )
 
+        else:
+            raise ValueError("Invalid strategy. Currently, only 'cap' is supported.")
+
     return df_out
 
 
@@ -207,10 +230,11 @@ def get_high_correlations(df, threshold=0.7):
     )
 
     high_correlations = [
-        (column, row, upper_triangle[column][row])
+        (column, row, upper_triangle.loc[row, column])
         for row in upper_triangle.index
         for column in upper_triangle.columns
-        if upper_triangle[column][row] > threshold
+        if pd.notna(upper_triangle.loc[row, column])
+        and upper_triangle.loc[row, column] > threshold
     ]
 
     result = pd.DataFrame(
@@ -242,9 +266,12 @@ def plot_missing_heatmap(df, title="Missing Values Heatmap"):
     plt.show()
 
 
-def plot_correlation_heatmap(corr_matrix, color="#1B4F72"):
+def cor_heatmap(corr_matrix, color="#1B4F72"):
     """
     Plots a correlation heatmap using a triangular mask.
+
+    This function keeps the original name 'cor_heatmap'
+    so it works with the existing notebook code.
     """
     plt.figure(figsize=(20, 15))
 
@@ -272,4 +299,14 @@ def plot_correlation_heatmap(corr_matrix, color="#1B4F72"):
     )
 
     plt.xticks(rotation=45, ha="right")
+    plt.yticks(rotation=0)
+    plt.tight_layout()
     plt.show()
+
+
+def plot_correlation_heatmap(corr_matrix, color="#1B4F72"):
+    """
+    Alternative function name for the correlation heatmap.
+    Calls cor_heatmap() internally.
+    """
+    return cor_heatmap(corr_matrix, color=color)
