@@ -12,14 +12,13 @@ from sklearn.metrics import silhouette_score, silhouette_samples, pairwise_dista
 from scipy.cluster.hierarchy import linkage, dendrogram, fcluster
 
 
-def read_csv_safely(filepath: str) -> pd.DataFrame:
-    """Read a CSV file and return an empty DataFrame if the file is missing."""
+def read_customer_info_clean(filepath: str = "../datasets/customer_info_clean.csv") -> pd.DataFrame:
+    """Read the cleaned customer info dataset."""
     try:
         return pd.read_csv(filepath)
     except FileNotFoundError:
         print(f"File not found: {filepath}")
         return pd.DataFrame()
-
 
 def read_newdata(filepath: str = "info_clustering.csv") -> pd.DataFrame:
     """Read the cleaned non-outlier clustering dataset."""
