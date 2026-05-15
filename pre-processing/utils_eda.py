@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 from datetime import datetime
 from sklearn.impute import KNNImputer
+from sklearn.preprocessing import StandardScaler
 
 
 # ============================================================
@@ -149,26 +150,36 @@ def apply_cyclic_transformation(df, col, max_val=24):
 
 def apply_knn_imputation(df, n_neighbors=5):
     """
-    Applies KNN imputation to numerical columns and returns the updated DataFrame.
+    Applies KNN imputation to numerical columns using StandardScaler first.
+
+    Why scaling is needed:
+    KNNImputer uses distance between rows. Without scaling, variables with
+    large magnitudes, such as spending columns, dominate the distance calculation.
+
     Non-numerical columns remain unchanged.
     """
     df_imputed = df.copy()
 
-    numeric_df = df_imputed.select_dtypes(include=[np.number])
+    numeric_cols = df_imputed.select_dtypes(include=[np.number]).columns
 
-    if numeric_df.empty:
+    if len(numeric_cols) == 0:
         return df_imputed
 
+    numeric_df = df_imputed[numeric_cols]
+
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(numeric_df)
+
     imputer = KNNImputer(n_neighbors=n_neighbors)
-    imputed_data = imputer.fit_transform(numeric_df)
+    imputed_scaled_data = imputer.fit_transform(scaled_data)
 
-    imputed_numeric_df = pd.DataFrame(
+    imputed_data = scaler.inverse_transform(imputed_scaled_data)
+
+    df_imputed[numeric_cols] = pd.DataFrame(
         imputed_data,
-        columns=numeric_df.columns,
-        index=numeric_df.index
+        columns=numeric_cols,
+        index=df_imputed.index
     )
-
-    df_imputed.update(imputed_numeric_df)
 
     return df_imputed
 
@@ -205,7 +216,11 @@ def handle_extreme_outliers(df, columns, strategy="cap"):
             df_out[col] = np.where(
                 df_out[col] > upper_bound,
                 upper_bound,
-                np.where(df_out[col] < lower_bound, lower_bound, df_out[col])
+                np.where(
+                    df_out[col] < lower_bound,
+                    lower_bound,
+                    df_out[col]
+                )
             )
 
         else:
