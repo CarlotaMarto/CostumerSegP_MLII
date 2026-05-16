@@ -230,6 +230,42 @@ def handle_extreme_outliers(df, columns, strategy="cap"):
 
 
 # ============================================================
+# ADVANCED: OUTLIER HANDLING AND SMART SCALING
+# ============================================================
+
+def remove_semi_constant_features(df, threshold=0.99):
+    """
+    Removes columns where a single category/value occupies more than the threshold.
+    Prevents variables with no variance from distorting the clustering distance metric.
+    """
+    semi_constant_cols = []
+    for col in df.columns:
+        # Find the frequency of the most common value in the column
+        most_frequent_ratio = df[col].value_counts(normalize=True).iloc[0]
+        if most_frequent_ratio >= threshold:
+            semi_constant_cols.append(col)
+            
+    print(f"✔️ Semi-constant columns removed (>{threshold*100}% identical): {semi_constant_cols}")
+    return df.drop(columns=semi_constant_cols)
+
+def scale_robust_excluding_binary(df, binary_cols=None):
+    """
+    Applies RobustScaler only to continuous numeric columns,
+    leaving binary columns (0 and 1 flags) completely intact.
+    """
+    from sklearn.preprocessing import RobustScaler
+    
+    binary_cols = binary_cols or []
+    # Select only numeric columns that are NOT in the binary columns list
+    scale_cols = [col for col in df.select_dtypes(include='number').columns if col not in binary_cols]
+    
+    scaler = RobustScaler()
+    scaled_array = scaler.fit_transform(df[scale_cols])
+    scaled_df = pd.DataFrame(scaled_array, columns=scale_cols, index=df.index)
+    
+    # Recombine the scaled numeric data with the original binary columns
+    return pd.concat([scaled_df, df[binary_cols]], axis=1)
+# ============================================================
 # CORRELATION ANALYSIS
 # ============================================================
 
