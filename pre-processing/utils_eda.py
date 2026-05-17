@@ -361,3 +361,65 @@ def plot_correlation_heatmap(corr_matrix, color="#1B4F72"):
     Calls cor_heatmap() internally.
     """
     return cor_heatmap(corr_matrix, color=color)
+
+
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
+import pandas as pd
+
+def test_scalers_kmeans(df, binary_cols=None, k=4, random_state=42):
+    """
+    Test different scalers (Standard, MinMax, Robust) on a clustering dataset.
+
+    Args:
+        df (pd.DataFrame): Dataset with continuous and binary features.
+        binary_cols (list): List of binary columns that should NOT be scaled.
+        k (int): Number of clusters for KMeans test.
+        random_state (int): Seed for KMeans.
+
+    Returns:
+        best_scaler_name (str): Name of the scaler with highest silhouette score.
+        best_score (float): Silhouette score of the best scaler.
+        scaled_df (pd.DataFrame): DataFrame scaled with the best scaler, keeping binary columns intact.
+    """
+    
+    if binary_cols is None:
+        binary_cols = []
+    
+    # Select only continuous features
+    X = df.drop(columns=binary_cols, errors='ignore')
+    
+    scalers = {
+        "Standard": StandardScaler(),
+        "MinMax": MinMaxScaler(),
+        "Robust": RobustScaler()
+    }
+    
+    scaler_results = {}
+    
+    for name, scaler in scalers.items():
+        X_scaled = scaler.fit_transform(X)
+        
+        kmeans = KMeans(n_clusters=k, random_state=random_state, n_init=10)
+        labels = kmeans.fit_predict(X_scaled)
+        score = silhouette_score(X_scaled, labels)
+        scaler_results[name] = score
+        print(f"{name} Scaler - Silhouette Score: {score:.4f}")
+    
+    # Choose best scaler
+    best_scaler_name = max(scaler_results, key=scaler_results.get)
+    best_score = scaler_results[best_scaler_name]
+    print(f"\nBest Scaler: {best_scaler_name} (Silhouette Score: {best_score:.4f})")
+    
+    # Apply the best scaler
+    final_scaler = scalers[best_scaler_name]
+    X_final_scaled = final_scaler.fit_transform(X)
+    
+    scaled_df = pd.DataFrame(X_final_scaled, columns=X.columns, index=X.index)
+    
+    # Add back binary columns without scaling
+    if binary_cols:
+        scaled_df[binary_cols] = df[binary_cols].values
+    
+    return best_scaler_name, best_score, scaled_df
