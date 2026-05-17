@@ -5,8 +5,18 @@ import matplotlib.pyplot as plt
 
 from datetime import datetime
 from sklearn.impute import KNNImputer
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_scoreimport pandas as pd
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
+from datetime import datetime
+from sklearn.impute import KNNImputer
+from sklearn.preprocessing import StandardScaler, MinMaxScaler, RobustScaler
+from sklearn.cluster import KMeans
+from sklearn.metrics import silhouette_score
 
 # ============================================================
 # MISSING VALUES AND DATA INTEGRITY
@@ -83,6 +93,10 @@ def get_education_info(row):
         3 = PhD
     - cleaned customer name
     """
+    # NOVO: Handle NaN/empty names
+    if pd.isna(row["customer_name"]) or str(row["customer_name"]) == 'nan':
+        return pd.Series([0, ''])
+    
     name = str(row["customer_name"])
     lower_name = name.lower()
 
@@ -136,13 +150,22 @@ def apply_cyclic_transformation(df, col, max_val=24):
     if col not in df_transformed.columns:
         raise ValueError(f"Column '{col}' was not found in the DataFrame.")
 
+    if df_transformed[col].isna().all():
+        print(f"Column {col} is all NaN, skipping transformation")
+        df_transformed[f"{col}_sin"] = np.nan
+        df_transformed[f"{col}_cos"] = np.nan
+        return df_transformed
+
     temp_col = pd.to_numeric(df_transformed[col], errors="coerce")
+    
+    if temp_col.max() > max_val:
+        print(f"col} has values > {max_val}, clipping...")
+        temp_col = temp_col.clip(upper=max_val)
 
     df_transformed[f"{col}_sin"] = np.sin(2 * np.pi * temp_col / max_val)
     df_transformed[f"{col}_cos"] = np.cos(2 * np.pi * temp_col / max_val)
 
     return df_transformed
-
 
 # ============================================================
 # ADVANCED PREPROCESSING
@@ -423,3 +446,29 @@ def test_scalers_kmeans(df, binary_cols=None, k=4, random_state=42):
         scaled_df[binary_cols] = df[binary_cols].values
     
     return best_scaler_name, best_score, scaled_df
+
+def validate_imputation(df_original, df_imputed, columns):
+    """
+    Verifies imputation didn't create impossible values
+    """
+    issues = []
+    for col in columns:
+        if col not in df_imputed.columns:
+            continue
+            
+        if df_imputed[col].min() < 0 and col != 'longitude':
+            issues.append(f"{col} has negative values after imputation: {df_imputed[col].min():.2f}")
+        
+        original_max = df_original[col].max()
+        imputed_max = df_imputed[col].max()
+        if imputed_max > original_max * 1.5:
+            issues.append(f"{col} max inflated from {original_max:.2f} to {imputed_max:.2f}")
+    
+    if issues:
+        print("Validation issues found:")
+        for issue in issues:
+            print(f"  {issue}")
+    else:
+        print("✓ Imputation validation passed")
+    
+    return len(issues) == 0
