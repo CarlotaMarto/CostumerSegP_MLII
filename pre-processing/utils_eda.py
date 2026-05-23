@@ -139,25 +139,6 @@ def apply_cyclic_transformation(df, col, max_val=24):
     return df_transformed
 
 
-def apply_log_transform(df, cols, prefix="log_"):
-    """Apply a safe log1p transform to specified numeric columns."""
-    df_transformed = df.copy()
-
-    for col in cols:
-        if col not in df_transformed.columns:
-            continue
-
-        numeric_series = pd.to_numeric(df_transformed[col], errors="coerce")
-        if (numeric_series < 0).any():
-            print(
-                f"Warning: negative values found in '{col}', clipping negative values to 0 before log1p."
-            )
-
-        df_transformed[f"{prefix}{col}"] = np.log1p(np.clip(numeric_series, 0, None))
-
-    return df_transformed
-
-
 # ============================================================
 # Imputation and preprocessing
 # ============================================================
