@@ -31,13 +31,6 @@ def get_profiling_features(df, distance_cols):
 # Scaling (fit once on regular customers, reuse for outliers)
 # ============================================================
 
-def fit_scaler(df, feature_cols, scaler=None):
-    """Fit a scaler on the selected features and return the scaled matrix."""
-    scaler = scaler or StandardScaler()
-    X = scaler.fit_transform(df[feature_cols].astype(float))
-    return X, scaler
-
-
 def transform_with_scaler(df, feature_cols, scaler):
     """Project new rows (e.g. outliers) using an already-fitted scaler."""
     return scaler.transform(df[feature_cols].astype(float))
@@ -67,32 +60,6 @@ def plot_elbow(k_values, inertia, cutoffs=None):
     if cutoffs:
         for c in cutoffs:
             plt.axvline(c, color="red", linestyle="--", alpha=0.7)
-    plt.grid(True, alpha=0.3)
-    plt.show()
-
-
-def silhouette_scan(X, k_range=range(2, 11), random_state=0,
-                    n_init=10, sample_size=8000):
-    """Return a DataFrame of mean silhouette per k (higher = better separated)."""
-    rows = []
-    for k in k_range:
-        labels = KMeans(n_clusters=k, random_state=random_state,
-                        n_init=n_init).fit_predict(X)
-        s = silhouette_score(X, labels,
-                             sample_size=min(sample_size, len(labels)),
-                             random_state=random_state)
-        rows.append({"k": k, "silhouette": round(float(s), 4)})
-    return pd.DataFrame(rows)
-
-
-def plot_silhouette(sil_df):
-    """Plot the silhouette-vs-k curve."""
-    plt.figure(figsize=(9, 5))
-    plt.plot(sil_df["k"], sil_df["silhouette"], marker="o", color="#1B4F72")
-    plt.xlabel("Number of clusters (k)")
-    plt.ylabel("Mean silhouette")
-    plt.title("Silhouette score by k")
-    plt.xticks(sil_df["k"])
     plt.grid(True, alpha=0.3)
     plt.show()
 
@@ -538,12 +505,6 @@ def plot_scaler_comparison(scaler_df, mark_k=None):
     plt.show()
 
 
-def best_scaler_at_k(scaler_df, k):
-    """Return the scaler name with the highest silhouette at a given k."""
-    sub = scaler_df[scaler_df["k"] == k]
-    return sub.loc[sub["silhouette"].idxmax(), "scaler"]
-
-
 # ============================================================
 # Silhouette "blade" plot (per-sample silhouette by cluster)
 # ============================================================
@@ -894,20 +855,6 @@ def build_granular_feature_sets(df):
         "spend_ng + promo + engagement + family": (spend_ng + promo + engage + family, True),
     }
     return {k: (cols, log) for k, (cols, log) in sets.items() if cols}
-
-
-def rank_features_for_clustering(df, cols, k, scaler_name="Robust",
-                                 logabs=True, method="both", random_state=0):
-    """Cluster on `cols`, then return the embedded importance of each feature.
-
-    One call that ties the pieces together: scale -> KMeans(k) -> embedded
-    importance. Use it to spot features the segmentation ignores (importance
-    near zero) so they can be dropped before re-clustering.
-    """
-    X = apply_feature_pipeline(df, cols, logabs, get_scaler(scaler_name), fit=True)
-    labels = KMeans(n_clusters=k, random_state=random_state, n_init=10).fit_predict(X)
-    return embedded_feature_importance(X, labels, cols, method=method,
-                                       random_state=random_state)
 
 
 # ============================================================

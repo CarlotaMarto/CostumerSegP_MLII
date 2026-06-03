@@ -22,7 +22,7 @@ RECOMMENDED PIPELINE ORDER (read this before re-running the notebook)
 4. Feature engineering (tenure, total_children, technology,
    log_total_spend, cyclic hour, ...).
 5. Feature SELECTION driven by the correlation matrix
-   -> `get_high_correlations` + `select_features_by_correlation`.
+   -> `get_high_correlations` (review pairs manually and drop redundant columns).
 6. Build the clustering matrix EXCLUDING identity/geo features from the
    distance (is_male, loyalty flag, latitude, longitude) and scale
    -> `build_clustering_features` + `test_scalers_kmeans`.
@@ -80,11 +80,6 @@ def get_missing_report(df):
     report = report.sort_values(by="Percentage (%)", ascending=False)
 
     return report
-
-
-def calculate_percentage(df, condition):
-    """Calculate the percentage of rows that satisfy a given condition."""
-    return round((condition.sum() / len(df)) * 100, 2)
 
 
 def get_invalid_years(df, year_col="year_first_transaction"):
@@ -278,43 +273,6 @@ def validate_imputation(df_original, df_imputed, columns):
 # ============================================================
 # Outlier handling
 # ============================================================
-
-
-def handle_extreme_outliers(df, columns, strategy="cap"):
-    """Cap extreme values using the 3.0 * IQR rule (winsorising).
-
-    WARNING ABOUT ORDER
-    --------------------
-    Run this (or, preferably, `split_outliers_iqr`) on the RAW, absolute
-    `lifetime_spend_*` columns, BEFORE applying aggregate transformations such
-    as log_total_spend. Once the spend columns are compressed, the monetary
-    tail is less visible and capping has less signal to act on.
-    """
-    df_out = df.copy()
-
-    present = [c for c in columns if c in df_out.columns]
-    missing = [c for c in columns if c not in df_out.columns]
-    if missing:
-        print(f"handle_extreme_outliers: columns not found and skipped: {missing}")
-
-    for col in present:
-        q1 = df_out[col].quantile(0.25)
-        q3 = df_out[col].quantile(0.75)
-        iqr = q3 - q1
-
-        lower_bound = q1 - (3.0 * iqr)
-        upper_bound = q3 + (3.0 * iqr)
-
-        if strategy == "cap":
-            df_out[col] = np.where(
-                df_out[col] > upper_bound,
-                upper_bound,
-                np.where(df_out[col] < lower_bound, lower_bound, df_out[col]),
-            )
-        else:
-            raise ValueError("Invalid strategy. Currently, only 'cap' is supported.")
-
-    return df_out
 
 
 def split_outliers_iqr(
@@ -517,57 +475,6 @@ def get_high_correlations(df, threshold=0.7):
     return result.sort_values(by="Correlation", ascending=False)
 
 
-def select_features_by_correlation(high_corr_pairs, keep_priority=None, protect=None):
-    """Suggest which redundant features to drop, from the high-correlation pairs.
-
-    This addresses STATISTICAL REDUNDANCY only. Conceptual relevance (whether a
-    feature belongs to "how the customer shops") is a separate, manual decision
-    and is NOT something a correlation matrix can answer.
-
-    Strategy: for each correlated pair, drop the second variable unless the
-    first is the one you would rather keep (use `keep_priority` to force a
-    variable to be kept). Variables in `protect` are never dropped.
-
-    Parameters
-    ----------
-    high_corr_pairs : pandas.DataFrame
-        Output of `get_high_correlations` (columns Variable 1 / Variable 2).
-    keep_priority : list, optional
-        Variables you prefer to keep when they appear in a pair.
-    protect : list, optional
-        Variables that must never be dropped (e.g. log_total_spend).
-
-    Returns
-    -------
-    list
-        Suggested columns to drop. Always review before applying.
-    """
-    keep_priority = set(keep_priority or [])
-    protect = set(protect or [])
-    to_drop = set()
-
-    for _, r in high_corr_pairs.iterrows():
-        v1, v2 = r["Variable 1"], r["Variable 2"]
-        if v1 in protect and v2 in protect:
-            continue
-        # decide which of the pair to drop
-        if v2 in protect or v2 in keep_priority:
-            candidate = v1
-        elif v1 in protect or v1 in keep_priority:
-            candidate = v2
-        else:
-            candidate = v2  # default: drop the second
-        if candidate in to_drop:
-            continue
-        if candidate in protect:
-            continue
-        to_drop.add(candidate)
-
-    print(f"Suggested drops from correlation redundancy: {sorted(to_drop)}")
-    return sorted(to_drop)
-
-
-
 # ============================================================
 # Building the clustering matrix + scaling
 # ============================================================
@@ -668,24 +575,6 @@ def test_scalers_kmeans(
     return best, scores_table, scaled_df
 
 
-def scale_robust_excluding_binary(df, binary_cols=None):
-    """Apply RobustScaler only to continuous numerical columns (binaries kept as 0/1)."""
-    binary_cols = binary_cols or []
-    binary_cols = [col for col in binary_cols if col in df.columns]
-
-    scale_cols = [
-        col
-        for col in df.select_dtypes(include=[np.number]).columns
-        if col not in binary_cols
-    ]
-
-    scaler = RobustScaler()
-    scaled_array = scaler.fit_transform(df[scale_cols])
-    scaled_df = pd.DataFrame(scaled_array, columns=scale_cols, index=df.index)
-
-    return pd.concat([scaled_df, df[binary_cols]], axis=1)
-
-
 # ============================================================
 # Visualization functions
 # ============================================================
@@ -727,6 +616,3 @@ def cor_heatmap(corr_matrix, color="#1B4F72"):
     plt.show()
 
 
-def plot_correlation_heatmap(corr_matrix, color="#1B4F72"):
-    """Alternative function name for the correlation heatmap."""
-    return cor_heatmap(corr_matrix, color=color)
