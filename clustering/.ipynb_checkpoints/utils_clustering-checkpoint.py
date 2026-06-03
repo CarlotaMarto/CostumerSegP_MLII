@@ -7,13 +7,14 @@ helpers and the professor's `utils.plot_dendrogram`, and only orchestrates /
 narrates. All real logic lives here so it is versionable and DRY.
 
 Design choices baked in here (justified in the notebook / report):
-  * The clustering DISTANCE is driven by share-of-wallet features
-    (pct_spend_*). They give the cleanest, most actionable segments for a
-    retailer and map one-to-one onto category promotions. Absolute spend,
-    value (log_total_spend), demographics, loyalty, complaints, promo
-    sensitivity and geography are kept ONLY for profiling, never for distance.
-  * Features are standardised (StandardScaler), exactly as in the Week-6
-    walkthrough, so no single category dominates the Euclidean distance.
+  * The clustering DISTANCE is driven by absolute lifetime spending features
+    (`lifetime_spend_*`) plus selected behavioural variables. This preserves
+    customer value and category intensity.
+  * Groceries are kept in the dataframe for profiling, but alternative feature
+    sets exclude `lifetime_spend_groceries` from the distance because it can
+    dominate the solution and make several segments look too similar.
+  * Features are scaled before KMeans so no single category dominates the
+    Euclidean distance purely because of its unit or magnitude.
   * The scaler is fitted ONCE on the regular customers and re-used to project
     the held-aside outliers, so both live in the same feature space.
 
@@ -27,18 +28,13 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.cluster import KMeans, AgglomerativeClustering, DBSCAN
 from sklearn.metrics import silhouette_score, confusion_matrix
 
 
 # ============================================================
 # Feature selection for the clustering distance
 # ============================================================
-
-def get_share_of_wallet_features(df, prefix="pct_spend_"):
-    """Return the share-of-wallet columns that drive the clustering distance."""
-    return [c for c in df.columns if c.startswith(prefix)]
-
 
 def get_profiling_features(df, distance_cols):
     """Return every numeric column NOT used in the distance (for profiling)."""
@@ -165,6 +161,51 @@ def fit_dendrogram_model(X, sample_size=5000, linkage="ward", random_state=0):
     return idx, model
 
 
+def dbscan_grid(X, eps_values=None, min_samples_values=None, sample_size=8000,
+                random_state=0):
+    """Evaluate DBSCAN on a sample for several eps/min_samples settings.
+
+    DBSCAN can be useful as a density-based benchmark, but it often labels many
+    customers as noise in high-dimensional customer data. The silhouette is
+    computed only on non-noise observations when at least two clusters exist.
+    """
+    eps_values = eps_values or [0.3, 0.5, 0.7, 0.9, 1.1, 1.3, 1.5]
+    min_samples_values = min_samples_values or [5, 10, 20, 40]
+
+    rng = np.random.RandomState(random_state)
+    n = min(sample_size, X.shape[0])
+    idx = rng.choice(X.shape[0], n, replace=False)
+    Xs = X[idx]
+
+    rows = []
+    for eps in eps_values:
+        for min_samples in min_samples_values:
+            labels = DBSCAN(eps=eps, min_samples=min_samples).fit_predict(Xs)
+            non_noise = labels != -1
+            n_clusters = len(set(labels[non_noise]))
+            noise_pct = float((~non_noise).mean() * 100)
+
+            sil = np.nan
+            if n_clusters >= 2 and non_noise.sum() > n_clusters:
+                sil = float(silhouette_score(Xs[non_noise], labels[non_noise]))
+
+            rows.append({
+                "eps": eps,
+                "min_samples": min_samples,
+                "n_clusters": n_clusters,
+                "noise_pct": round(noise_pct, 2),
+                "silhouette_non_noise": np.nan if np.isnan(sil) else round(sil, 4),
+            })
+    return pd.DataFrame(rows).sort_values(
+        ["silhouette_non_noise", "noise_pct"], ascending=[False, True], na_position="last"
+    ).reset_index(drop=True)
+
+
+def fit_dbscan(X, eps, min_samples):
+    """Fit DBSCAN on the full matrix and return labels."""
+    return DBSCAN(eps=eps, min_samples=min_samples).fit_predict(X)
+
+
 def compare_solutions(labels_a, labels_b, name_a="KMeans", name_b="Ward"):
     """Confusion matrix between two clustering label vectors (same rows)."""
     cm = confusion_matrix(labels_a, labels_b)
@@ -213,7 +254,7 @@ def plot_cluster_sizes(df, label_col):
     plt.show()
 
 
-def plot_profile_heatmap(profile_df, title="Cluster profile (share of wallet, %)"):
+def plot_profile_heatmap(profile_df, title="Cluster profile"):
     """Heatmap of a profile table (clusters x features). Drop OVERALL row first."""
     data = profile_df.drop(index="OVERALL", errors="ignore")
     plt.figure(figsize=(max(8, data.shape[1] * 0.9), max(4, data.shape[0] * 0.7)))
@@ -405,7 +446,6 @@ def build_candidate_feature_sets(df):
     `logabs_*` sets log1p the absolute spend columns to tame their skew.
     Demographic / engagement blocks are added only where they exist.
     """
-    pct = [c for c in df.columns if c.startswith("pct_spend_")]
     abss = [c for c in df.columns if c.startswith("lifetime_spend_")]
     abss_no_groceries = [c for c in abss if c != "lifetime_spend_groceries"]
     eng = [c for c in ["log_total_spend", "distinct_stores_visited",
@@ -416,21 +456,21 @@ def build_candidate_feature_sets(df):
             if c in df.columns]
     promo = [c for c in ["percentage_of_products_bought_promotion"] if c in df.columns]
     return {
-        # ---- value-based: absolute lifetime spend (the professor's Week-6 approach) ----
-        "lifetime_spend": (abss, False),                  # raw absolute spend
-        "log_lifetime_spend": (abss, True),               # log1p (tames the heavy skew)
-        # ---- preference-based: share of wallet ----
-        "share_of_wallet": (pct, False),
-        "share + engagement": (pct + eng, False),
-        "share + engagement + demo": (pct + eng + demo, False),
-        # ---- absolute spend + promo sensitivity ----
+        # ---- value-based: absolute lifetime spend ----
+        "lifetime_spend": (abss, False),
+        "lifetime_spend no groceries": (abss_no_groceries, False),
+        "log_lifetime_spend": (abss, True),
+        "log_lifetime_spend no groceries": (abss_no_groceries, True),
+        # ---- absolute spend + behaviour ----
         "spend + promo": (abss + promo, False),
         "spend + promo no groceries": (abss_no_groceries + promo, False),
         "log_spend + promo": (abss + promo, True),
+        "log_spend + promo no groceries": (abss_no_groceries + promo, True),
         # ---- value + demographics / engagement ----
         "log_spend + demo": (abss + demo, True),
+        "log_spend + demo no groceries": (abss_no_groceries + demo, True),
         "log_spend + engagement + demo": (abss + eng + demo, True),
-        "all (abs + share + eng + demo)": (abss + pct + eng + demo, False),
+        "log_spend + engagement + demo no groceries": (abss_no_groceries + eng + demo, True),
     }
 
 
@@ -536,3 +576,254 @@ def plot_silhouette_grid(grid_df, title="Silhouette by feature set and k"):
     plt.tight_layout()
     plt.show()
     return piv
+
+
+# ============================================================
+# Embedded feature selection / importance (post-hoc on the segments)
+# ============================================================
+#
+# The correlation matrix used in the EDA notebook is a FILTER method: it flags
+# redundant features but cannot say which features actually DRIVE the segments.
+# Embedded methods answer that by letting a model's own training do the
+# selection. Because clustering is unsupervised, we use the cluster label as a
+# pseudo-target and run the embedded model post-hoc: this VALIDATES and explains
+# the chosen feature set rather than pre-selecting it.
+#
+#   * Lasso  : multinomial L1-penalised logistic regression. The L1 penalty
+#              shrinks uninformative coefficients to exactly zero, so the
+#              surviving non-zero coefficients are the embedded selection.
+#   * Forest : a Random Forest reads off impurity-based feature_importances_.
+#
+# A sparse, peaked importance profile means the segmentation rests on a few
+# interpretable drivers; a flat profile warns the feature set may be noisy.
+
+def embedded_feature_importance(X, labels, feature_cols, method="both",
+                                C=0.5, n_estimators=300, random_state=0):
+    """Embedded-method importance of each clustering feature for the segments.
+
+    Parameters
+    ----------
+    X : array-like (n_samples, n_features)
+        The SAME scaled matrix used to fit the clustering (so importances are
+        measured in the representation the distance actually used).
+    labels : array-like (n_samples,)
+        Cluster labels (the pseudo-target).
+    feature_cols : list[str]
+        Names for the columns of X, in order.
+    method : {'both', 'lasso', 'forest'}
+    C : float
+        Inverse L1 strength for the logistic model (smaller = sparser).
+    n_estimators : int
+        Trees for the Random Forest.
+
+    Returns
+    -------
+    pandas.DataFrame indexed by feature with the requested importance columns
+    (each normalised to sum to 1), sorted descending. A `lasso_selected`
+    boolean column marks features the L1 model kept (non-zero coefficient).
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.ensemble import RandomForestClassifier
+
+    X = np.asarray(X, dtype=float)
+    labels = np.asarray(labels)
+    if X.shape[1] != len(feature_cols):
+        raise ValueError("X columns and feature_cols length differ.")
+
+    out = pd.DataFrame(index=pd.Index(feature_cols, name="feature"))
+
+    if method in ("lasso", "both"):
+        clf = LogisticRegression(
+            penalty="l1", solver="saga", C=C,
+            max_iter=2000, random_state=random_state,
+        ).fit(X, labels)
+        imp = np.abs(clf.coef_).mean(axis=0)        # mean |coef| over OvR classes
+        total = imp.sum()
+        out["lasso_importance"] = imp / total if total else imp
+        out["lasso_selected"] = imp > 0
+
+    if method in ("forest", "both"):
+        rf = RandomForestClassifier(
+            n_estimators=n_estimators, random_state=random_state, n_jobs=-1,
+        ).fit(X, labels)
+        out["forest_importance"] = rf.feature_importances_
+
+    sort_col = "lasso_importance" if "lasso_importance" in out else "forest_importance"
+    return out.sort_values(sort_col, ascending=False).round(4)
+
+
+def select_features_embedded(importance_df, column="forest_importance",
+                             threshold="median"):
+    """Return the features an embedded method would keep.
+
+    threshold : 'median' | 'mean' | float
+        Features with importance strictly above the threshold are kept. Use
+        this to turn the importance table into an explicit feature shortlist
+        that can be compared against the filter (correlation) decision.
+    """
+    col = importance_df[column].dropna()
+    if threshold == "median":
+        cut = col.median()
+    elif threshold == "mean":
+        cut = col.mean()
+    else:
+        cut = float(threshold)
+    return col[col > cut].index.tolist()
+
+
+def plot_embedded_importance(importance_df, title="Embedded feature importance"):
+    """Horizontal bar chart of the embedded importances (one bar group per method)."""
+    cols = [c for c in ("lasso_importance", "forest_importance")
+            if c in importance_df.columns]
+    data = importance_df[cols].sort_values(cols[0])
+    ax = data.plot(kind="barh", figsize=(9, max(4, len(data) * 0.45)),
+                   color=["#1B4F72", "#7FB3D5"][:len(cols)])
+    ax.set_xlabel("Normalised importance")
+    ax.set_ylabel("Feature")
+    ax.set_title(title)
+    plt.tight_layout()
+    plt.show()
+
+
+# ============================================================
+# Standardised profile heatmap + combined elbow/silhouette
+# ============================================================
+#
+# plot_profile_heatmap shows means in ORIGINAL units (best for naming personas).
+# But as a heatmap it is unreadable when features differ in magnitude (spend in
+# thousands vs age in tens): the colour scale is swamped by the largest column.
+# This z-scores EACH feature across clusters first, so the colour shows how far
+# above (warm) or below (cool) the overall average each segment sits per feature
+# — i.e. exactly which features separate the segments. Read it together with the
+# original-unit table, not instead of it.
+
+def plot_profile_heatmap_z(profile_df, title="Cluster profile (standardised per feature)"):
+    """Heatmap of a profile table with each feature standardised across clusters.
+
+    Pass the SAME table you give to plot_profile_heatmap (it may include the
+    OVERALL row; it is dropped before plotting). Diverging colours are centred
+    at 0 = overall average.
+    """
+    data = profile_df.drop(index="OVERALL", errors="ignore").astype(float)
+    z = (data - data.mean(axis=0)) / data.std(axis=0).replace(0, np.nan)
+    z = z.fillna(0.0)
+    plt.figure(figsize=(max(8, z.shape[1] * 0.9), max(4, z.shape[0] * 0.7)))
+    sns.heatmap(z, annot=True, fmt="+.1f", cmap="RdBu_r", center=0,
+                linewidths=0.5, cbar_kws={"shrink": 0.6, "label": "std devs from overall"})
+    plt.title(title)
+    plt.ylabel("Cluster")
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.show()
+    return z.round(2)
+
+
+# ============================================================
+# Principled feature-set search (granular combos + embedded ranking)
+# ============================================================
+#
+# "Don't dump everything into the distance." These helpers let you compare
+# curated combinations on separation (silhouette) AND on which features the
+# segmentation actually relies on (embedded importance). The recommended
+# workflow: cluster on a broad set, drop the near-zero-importance features,
+# then keep the smallest set whose silhouette is essentially unchanged but
+# whose surviving features are interpretable for marketing.
+
+def build_granular_feature_sets(df):
+    """Curated, granular candidate sets (one behaviour/lifecycle block at a time).
+
+    Each entry is (columns, log_absolute_spend?), matching silhouette_grid /
+    plot_silhouette_grid. Identity/geo (is_male, loyalty, lat, long) are left
+    out of every set on purpose: they are profiling variables, not distance
+    drivers, and empirically carry ~0 importance for separating segments.
+    """
+    spend = [c for c in df.columns if c.startswith("lifetime_spend_")]
+    spend_ng = [c for c in spend if c != "lifetime_spend_groceries"]
+    promo = [c for c in ["percentage_of_products_bought_promotion"] if c in df.columns]
+    engage = [c for c in ["distinct_stores_visited", "lifetime_total_distinct_products"]
+              if c in df.columns]
+    family = [c for c in ["total_children"] if c in df.columns]
+
+    sets = {
+        "spend": (spend, True),
+        "spend no groceries": (spend_ng, True),
+        "spend_ng + promo": (spend_ng + promo, True),
+        "spend_ng + promo + engagement": (spend_ng + promo + engage, True),
+        "spend_ng + promo + family": (spend_ng + promo + family, True),
+        "spend_ng + promo + engagement + family": (spend_ng + promo + engage + family, True),
+    }
+    return {k: (cols, log) for k, (cols, log) in sets.items() if cols}
+
+
+def rank_features_for_clustering(df, cols, k, scaler_name="Standard",
+                                 logabs=True, method="both", random_state=0):
+    """Cluster on `cols`, then return the embedded importance of each feature.
+
+    One call that ties the pieces together: scale -> KMeans(k) -> embedded
+    importance. Use it to spot features the segmentation ignores (importance
+    near zero) so they can be dropped before re-clustering.
+    """
+    X = apply_feature_pipeline(df, cols, logabs, get_scaler(scaler_name), fit=True)
+    labels = KMeans(n_clusters=k, random_state=random_state, n_init=10).fit_predict(X)
+    return embedded_feature_importance(X, labels, cols, method=method,
+                                       random_state=random_state)
+
+
+# ============================================================
+# Ensemble / consensus clustering (robustness of the segmentation)
+# ============================================================
+#
+# A single KMeans depends on its random initialisation. An ensemble runs it many
+# times, ALIGNS the cluster labels across runs (a permutation problem solved with
+# the Hungarian algorithm on the confusion matrix) and majority-votes each
+# customer's segment. This yields a consensus labelling plus a per-customer
+# stability score = fraction of runs that agree with the consensus. High stability
+# means the structure is real and not an artefact of one lucky seed; low-stability
+# customers sit between segments and can be flagged in the report.
+
+def consensus_kmeans(X, k, n_runs=25, random_state=0, n_init=5):
+    """Stability-based ensemble of KMeans runs.
+
+    Returns
+    -------
+    (consensus_labels, stability)
+        consensus_labels : majority-vote segment per row (aligned label space)
+        stability        : fraction of runs (0-1) agreeing with the consensus
+    """
+    from scipy.optimize import linear_sum_assignment
+
+    X = np.asarray(X, dtype=float)
+    n = X.shape[0]
+    runs = [KMeans(n_clusters=k, random_state=random_state + r, n_init=n_init)
+            .fit_predict(X) for r in range(n_runs)]
+
+    ref = runs[0]
+    aligned = [ref]
+    for lab in runs[1:]:
+        cm = confusion_matrix(ref, lab, labels=list(range(k)))
+        row, col = linear_sum_assignment(-cm)          # match run labels to ref
+        mapping = {c: r for r, c in zip(row, col)}
+        aligned.append(np.array([mapping.get(x, x) for x in lab]))
+
+    A = np.vstack(aligned).T                            # (n_points, n_runs)
+    counts = np.zeros((n, k), dtype=int)
+    for j in range(A.shape[1]):
+        counts[np.arange(n), A[:, j]] += 1
+    consensus = counts.argmax(axis=1)
+    stability = counts.max(axis=1) / A.shape[1]
+    return consensus, stability
+
+
+def plot_stability(stability, title="Consensus stability per customer"):
+    """Histogram of the per-customer ensemble agreement scores."""
+    stability = np.asarray(stability)
+    plt.figure(figsize=(8, 4))
+    plt.hist(stability, bins=20, color="#1B4F72", edgecolor="white")
+    plt.axvline(stability.mean(), color="red", linestyle="--",
+                label=f"mean = {stability.mean():.3f}")
+    plt.xlabel("Fraction of runs agreeing with the consensus label")
+    plt.ylabel("Customers")
+    plt.title(title)
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
