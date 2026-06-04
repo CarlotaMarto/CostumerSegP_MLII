@@ -1,0 +1,22 @@
+cluster,segment,if_buys,promote,confidence,lift
+0,Promo Shoppers,"asparagus, carrots",salad,0.42,3.76
+0,Promo Shoppers,"asparagus, avocado",salad,0.41,3.67
+0,Promo Shoppers,"asparagus, spinach",salad,0.41,3.61
+1,Steady Shoppers,salad,asparagus,0.4,2.52
+1,Steady Shoppers,bluetooth headphones,airpods,0.39,2.34
+1,Steady Shoppers,avocado,asparagus,0.37,2.34
+2,Wellness,energy drink,airpods,0.24,2.34
+2,Wellness,bluetooth headphones,airpods,0.22,2.13
+2,Wellness,pancakes,airpods,0.21,2.03
+3,Big Families,"eggs, green tea",cereals,0.48,1.36
+3,Big Families,"cereals, oil",eggs,0.46,1.35
+3,Big Families,"butter, honey",eggs,0.45,1.34
+4,Veggies,"napkins, toilet paper",dog food,0.41,1.43
+4,Veggies,"dog food, toilet paper",napkins,0.39,1.41
+4,Veggies,"chicken, napkins",dog food,0.41,1.4
+5,Technologists,bluetooth headphones,airpods,0.49,3.86
+5,Technologists,bluetooth headphones,energy drink,0.32,3.64
+5,Technologists,laptop,airpods,0.43,3.4
+6,Loyalists,energy drink,airpods,0.28,2.03
+6,Loyalists,bluetooth headphones,airpods,0.25,1.83
+6,Loyalists,iphone 10,airpods,0.22,1.61
