@@ -4,17 +4,19 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from IPython.display import display
 from sklearn.preprocessing import MinMaxScaler
 
 
 CLUSTER_NAMES = {
-    0: "Young Promotion-Driven Shoppers",
-    1: "Balanced Grocery Regulars",
-    2: "Hygiene & Wellness Shoppers",
-    3: "Family High-Value Stock-Up Shoppers",
-    4: "Vegetable-Focused Mature Shoppers",
-    5: "Tech & Alcohol Specialists",
-    6: "Loyal High-Value Grocery Shoppers",
+    0: "Value Seekers",
+    1: "Wellness",
+    2: "Traditional Shoppers",
+    3: "Vegetarians",
+    4: "Promotion Hunters",
+    5: "Tech Enthusiasts",
+    6: "Large Families",
+    7: "Loyal Explorers",
 }
 
 
@@ -117,6 +119,60 @@ def plot_feature_bars(df, features, cluster_col="cluster", max_cols=3):
     plt.show()
 
 
+
+def plot_binary_share_by_cluster(df, columns, cluster_col="cluster"):
+    """Plot the percentage of customers with selected binary attributes by cluster."""
+    columns = [c for c in columns if c in df.columns]
+    if not columns:
+        return pd.DataFrame()
+
+    rows = []
+    for col in columns:
+        means = df.groupby(cluster_col)[col].mean().reset_index(name="share")
+        means["feature"] = col
+        rows.append(means)
+    summary = pd.concat(rows, ignore_index=True)
+    summary["share_%"] = summary["share"] * 100
+
+    plt.figure(figsize=(10, 4.5))
+    sns.barplot(data=summary, x=cluster_col, y="share_%", hue="feature", palette=["#B87540", "#A9B9BB", "#836D43"])
+    plt.title("Binary profile by cluster")
+    plt.xlabel("Cluster")
+    plt.ylabel("Percentage of customers")
+    plt.legend(title="Feature", bbox_to_anchor=(1.02, 1), loc="upper left")
+    plt.tight_layout()
+    plt.show()
+    return summary[[cluster_col, "feature", "share_%"]].round(1)
+
+
+def plot_mean_profile_bars(df, columns, cluster_col="cluster", title="Mean profile by cluster"):
+    """Plot mean values of selected numeric attributes by cluster."""
+    columns = [c for c in columns if c in df.columns]
+    if not columns:
+        return pd.DataFrame()
+
+    summary = df.groupby(cluster_col)[columns].mean().reset_index()
+    long = summary.melt(id_vars=cluster_col, var_name="feature", value_name="mean")
+
+    n_cols = min(2, len(columns))
+    n_rows = int(np.ceil(len(columns) / n_cols))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(6 * n_cols, 4 * n_rows))
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, feature in zip(axes, columns):
+        sub = long[long["feature"] == feature]
+        sns.barplot(data=sub, x=cluster_col, y="mean", ax=ax, color="#B87540")
+        ax.set_title(feature)
+        ax.set_xlabel("Cluster")
+        ax.set_ylabel("Mean")
+
+    for ax in axes[len(columns):]:
+        ax.axis("off")
+    fig.suptitle(title, y=1.02)
+    plt.tight_layout()
+    plt.show()
+    return summary.round(2)
+
 def plot_boxplot_grid(df, features, cluster_col="cluster", max_cols=3):
     """Boxplots of selected variables by cluster."""
     features = [f for f in features if f in df.columns]
@@ -155,8 +211,77 @@ def top_deviations(profile_df, n=5):
 
 
 def export_id_cluster(df, output_path="../datasets/id_and_cluster.csv"):
-    """Export customer_id, cluster and cluster_name."""
-    cols = ["customer_id", "cluster", "cluster_name"]
+    """Export the final customer segment assignment."""
+    cols = ["customer_id", "cluster"]
+    if "cluster_name" in df.columns:
+        cols.append("cluster_name")
     out = df[cols].drop_duplicates("customer_id").sort_values("customer_id")
     out.to_csv(output_path, index=False)
     return out
+
+
+
+def spend_columns(df):
+    """Lifetime spend variables available in the characterization data."""
+    return [c for c in df.columns if c.startswith("lifetime_spend_")]
+
+
+def behavioural_profile_columns(df):
+    """Main behavioural and demographic variables used for interpretation."""
+    return [c for c in [
+        "log_total_spend",
+        "percentage_of_products_bought_promotion",
+        "distinct_stores_visited",
+        "lifetime_total_distinct_products",
+        "customer_age",
+        "education_level",
+        "tenure",
+        "total_children",
+        "number_complaints",
+        "customer_loyalty_flag",
+        "is_male",
+    ] if c in df.columns]
+
+
+def key_plot_columns(df):
+    """Compact feature list for barplots and boxplots."""
+    return [c for c in [
+        "lifetime_spend_groceries",
+        "lifetime_spend_vegetables",
+        "lifetime_spend_alcohol_drinks",
+        "lifetime_spend_meat",
+        "lifetime_spend_fish",
+        "lifetime_spend_hygiene",
+        "lifetime_spend_petfood",
+        "lifetime_spend_technology",
+        "log_total_spend",
+        "percentage_of_products_bought_promotion",
+        "customer_age",
+        "total_children",
+        "number_complaints",
+    ] if c in df.columns]
+
+
+def binary_profile_columns(df):
+    """Binary attributes used for simple segment checks."""
+    return [c for c in ["customer_loyalty_flag", "is_male"] if c in df.columns]
+
+
+def household_profile_columns(df):
+    """Household and complaints variables used for simple segment checks."""
+    return [c for c in ["total_children", "number_complaints"] if c in df.columns]
+
+
+def plot_simple_profile_checks(df):
+    """Plot loyalty, gender, household size and complaints by cluster."""
+    binary_summary = plot_binary_share_by_cluster(df, binary_profile_columns(df))
+    display(binary_summary)
+
+    household_summary = plot_mean_profile_bars(
+        df,
+        household_profile_columns(df),
+        title="Household and complaints profile by cluster",
+    )
+    display(household_summary)
+    return binary_summary, household_summary
+

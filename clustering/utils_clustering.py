@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from IPython.display import display
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import RobustScaler
@@ -255,6 +256,35 @@ def plot_method_k_benchmark(results_df, title="Method benchmark by k"):
     plt.tight_layout()
     plt.show()
 
+
+
+def benchmark_summary_table(kmeans_df, hierarchical_df, centroid_df):
+    """Compact benchmark table without method-specific empty columns."""
+    common_cols = [
+        "method",
+        "k",
+        "silhouette",
+        "min_cluster_size",
+        "max_cluster_size",
+        "largest_share_%",
+    ]
+    parts = []
+    for df in [kmeans_df, hierarchical_df, centroid_df]:
+        cols = [c for c in common_cols if c in df.columns]
+        best = df.sort_values("silhouette", ascending=False).head(3)[cols]
+        parts.append(best)
+    return pd.concat(parts, ignore_index=True).sort_values(
+        "silhouette", ascending=False
+    ).reset_index(drop=True)
+
+
+def valid_dbscan_results(dbscan_df):
+    """Return DBSCAN settings where a silhouette can be computed."""
+    cols = ["eps", "min_samples", "n_clusters", "noise_pct", "silhouette_non_noise"]
+    valid = dbscan_df.dropna(subset=["silhouette_non_noise"]).copy()
+    return valid[cols].sort_values(
+        ["silhouette_non_noise", "noise_pct"], ascending=[False, True]
+    ).reset_index(drop=True)
 
 def compare_solutions(labels_a, labels_b, name_a="KMeans", name_b="Ward"):
     """Confusion matrix between two clustering label vectors (same rows)."""
@@ -1064,3 +1094,465 @@ def plot_stability(stability, title="Consensus stability per customer"):
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+
+# ============================================================
+# Notebook workflow helpers
+# ============================================================
+
+def run_method_benchmarks(X, k_range=range(2, 11), random_state=0):
+    """Run KMeans, agglomerative and centroid Ward benchmark tables."""
+    kmeans_search = kmeans_k_benchmark(
+        X, k_range=k_range, random_state=random_state, n_init=10, sample_size=8000
+    )
+    hierarchical_search = hierarchical_k_benchmark(
+        X,
+        k_range=k_range,
+        linkages=["ward", "complete", "average", "single"],
+        sample_size=5000,
+        random_state=random_state,
+    )
+    centroid_ward_search = centroid_ward_k_benchmark(
+        X,
+        macro_k_range=k_range,
+        micro_k=20,
+        random_state=random_state,
+        n_init=20,
+        sample_size=8000,
+    )
+    plot_df = pd.concat(
+        [
+            kmeans_search[["method", "k", "silhouette"]],
+            hierarchical_search[["method", "k", "silhouette"]],
+            centroid_ward_search[["method", "k", "silhouette"]],
+        ],
+        ignore_index=True,
+    )
+    summary = benchmark_summary_table(kmeans_search, hierarchical_search, centroid_ward_search)
+    return {
+        "plot": plot_df,
+        "summary": summary,
+        "kmeans": kmeans_search,
+        "hierarchical": hierarchical_search,
+        "centroid_ward": centroid_ward_search,
+    }
+
+
+def compare_hierarchical_linkages(X, k, final_labels, linkages=None,
+                                  sample_size=5000, random_state=0):
+    """Compare final KMeans labels with agglomerative labels on one sample."""
+    linkages = linkages or ["ward", "complete", "average", "single"]
+    rows = []
+    comparisons = {}
+    for linkage_name in linkages:
+        sample_idx, labels = fit_hierarchical_sample(
+            X, k, sample_size=sample_size, linkage=linkage_name, random_state=random_state
+        )
+        sil = silhouette_score(X[sample_idx], labels)
+        rows.append({
+            "method": f"Agglomerative-{linkage_name}",
+            "sample_size": len(sample_idx),
+            "k": int(k),
+            "silhouette_sample": round(float(sil), 4),
+        })
+        comparisons[linkage_name] = compare_solutions(
+            final_labels[sample_idx], labels,
+            name_a="KMeans", name_b=linkage_name.title(),
+        )
+    return pd.DataFrame(rows), comparisons
+
+
+def benchmark_label_tracking():
+    """Document where benchmark labels are stored in the workflow."""
+    return pd.DataFrame([
+        {
+            "solution": "Final KMeans",
+            "label_column": "cluster",
+            "scope": "regular customer dataset",
+            "purpose": "final assignment before outlier reintegration",
+        },
+        {
+            "solution": "Agglomerative linkages",
+            "label_column": "hierarchical comparison tables",
+            "scope": "sample only",
+            "purpose": "benchmark against KMeans under several linkages",
+        },
+        {
+            "solution": "Centroid Ward macro clusters",
+            "label_column": "macro_cluster",
+            "scope": "regular customer dataset",
+            "purpose": "two stage hierarchical benchmark",
+        },
+        {
+            "solution": "DBSCAN",
+            "label_column": "dbscan_cluster if enabled",
+            "scope": "benchmark only",
+            "purpose": "density and noise sensitivity check",
+        },
+        {
+            "solution": "SOM",
+            "label_column": "som_unit",
+            "scope": "regular customer dataset",
+            "purpose": "topology based visual profiling",
+        },
+    ])
+
+
+def fit_centroid_ward_macro(X, feature_cols, k, micro_k=20, random_state=0,
+                            n_init=20, plot=True):
+    """Fit KMeans micro clusters and merge their centroids with Ward linkage."""
+    from scipy.cluster.hierarchy import linkage, fcluster
+
+    micro = fit_kmeans(X, micro_k, random_state=random_state, n_init=n_init)
+    centroids = pd.DataFrame(
+        micro.cluster_centers_,
+        columns=feature_cols,
+        index=[f"C{i}" for i in range(micro_k)],
+    )
+    Z = linkage(centroids.values, method="ward")
+    if plot:
+        plt.figure(figsize=(10, 5))
+        dendrogram(
+            Z,
+            labels=centroids.index.tolist(),
+            leaf_rotation=90,
+            leaf_font_size=10,
+        )
+        plt.title("Hierarchical clustering on KMeans centroids (Ward linkage)")
+        plt.ylabel("Ward distance")
+        plt.tight_layout()
+        plt.show()
+
+    centroid_labels = fcluster(Z, t=int(k), criterion="maxclust") - 1
+    mapping = dict(zip(range(micro_k), centroid_labels))
+    macro_labels = np.array([mapping[x] for x in micro.labels_])
+    return micro, centroids, Z, macro_labels
+
+
+def centroid_ward_report(X, final_labels, macro_labels):
+    """Return compact metrics for the centroid Ward benchmark."""
+    return pd.DataFrame([
+        {
+            "solution": "Final KMeans",
+            "silhouette": round(float(silhouette_score(X, final_labels)), 4),
+        },
+        {
+            "solution": "Centroid Ward macro",
+            "silhouette": round(float(silhouette_score(X, macro_labels)), 4),
+        },
+    ])
+
+
+def plot_macro_embeddings(X, macro_labels, sample_size=8000, random_state=0):
+    """Plot PCA and UMAP views for macro cluster labels."""
+    X_sub, labels_sub = subsample(X, macro_labels, n=sample_size, random_state=random_state)
+    plot_embedding(
+        embed_pca(X_sub),
+        labels_sub,
+        title="PCA - Centroid Ward macro clusters",
+        method_name="PCA",
+    )
+    emb, method = embed_umap(X_sub, random_state=random_state)
+    plot_embedding(
+        emb,
+        labels_sub,
+        title="UMAP - Centroid Ward macro clusters",
+        method_name=method,
+    )
+
+
+def dbscan_benchmark_table(X, eps_values=None, min_samples_values=None,
+                           sample_size=8000, random_state=0):
+    """Run DBSCAN grid and return valid and non valid parameter tables."""
+    results = dbscan_grid(
+        X,
+        eps_values=eps_values,
+        min_samples_values=min_samples_values,
+        sample_size=sample_size,
+        random_state=random_state,
+    )
+    valid = valid_dbscan_results(results)
+    invalid = results[results["silhouette_non_noise"].isna()][
+        ["eps", "min_samples", "n_clusters", "noise_pct"]
+    ].reset_index(drop=True)
+    return results, valid, invalid
+
+
+def maybe_fit_dbscan(X, run=False, eps=0.9, min_samples=10):
+    """Optionally fit DBSCAN; otherwise keep it as benchmark only."""
+    if not run:
+        print("DBSCAN is kept as a benchmark only. The final assignment is not based on DBSCAN labels.")
+        return None
+    labels = fit_dbscan(X, eps=float(eps), min_samples=int(min_samples))
+    non_noise = labels != -1
+    print("Selected DBSCAN parameters:")
+    print("eps:", eps, "| min_samples:", min_samples)
+    print("Clusters excluding noise:", len(set(labels[non_noise])))
+    print("Noise %:", round((labels == -1).mean() * 100, 2))
+    display(pd.Series(labels).value_counts().sort_index())
+    return labels
+
+
+def build_som_features(df):
+    """Default profiling variables used in the SOM diagnostic."""
+    return [c for c in [
+        "lifetime_spend_groceries",
+        "lifetime_spend_vegetables",
+        "lifetime_spend_meat",
+        "lifetime_spend_fish",
+        "lifetime_spend_alcohol_drinks",
+        "lifetime_spend_hygiene",
+        "lifetime_spend_petfood",
+        "lifetime_spend_technology",
+        "percentage_of_products_bought_promotion",
+        "total_children",
+        "customer_age",
+        "education_level",
+        "number_complaints",
+    ] if c in df.columns]
+
+
+def run_som_diagnostic(df, scaler_name="MinMax", grid=(12, 12), iterations=1000,
+                       sample_size=12000, random_state=0):
+    """Train the SOM diagnostic and plot its main views."""
+    feature_cols = build_som_features(df)
+    scaler = get_scaler(scaler_name)
+    X_som = apply_feature_pipeline(df, feature_cols, logabs=True, scaler=scaler, fit=True)
+    curve, som = som_quantization_curve(
+        X_som,
+        grid=grid,
+        iterations=iterations,
+        checkpoints=[50, 100, 200, 400, 700, iterations],
+        sigma=1.2,
+        learning_rate=0.5,
+        sample_size=sample_size,
+        random_state=random_state,
+    )
+    display(curve)
+    plot_som_quantization_curve(curve)
+    plot_som_umatrix(som, title="SOM U-Matrix")
+    return feature_cols, X_som, curve, som
+
+
+def assign_and_plot_som(df, som, X_som, feature_cols, grid=(12, 12)):
+    """Assign SOM units and plot hit map and feature maps."""
+    units = assign_som_units(som, X_som)
+    counts = pd.Series(units).value_counts()
+    print("Active SOM units:", counts.shape[0], "out of", grid[0] * grid[1])
+    display(counts.rename("customers").sort_values(ascending=False).head(15).to_frame())
+    plot_som_unit_counts(units, grid=grid, title="SOM hit map", annot=False)
+    plot_som_feature_maps(som, feature_names=feature_cols, features=feature_cols, n_cols=3)
+    return units
+
+
+def consensus_report(X, labels, k, n_runs=25, random_state=0):
+    """Run consensus KMeans and print the main stability diagnostics."""
+    from sklearn.metrics import adjusted_rand_score
+
+    consensus_labels, stability = consensus_kmeans(
+        X, k, n_runs=n_runs, random_state=random_state
+    )
+    print("Single-run silhouette  :", round(silhouette_score(
+        X, labels, sample_size=8000, random_state=random_state), 4))
+    print("Consensus  silhouette  :", round(silhouette_score(
+        X, consensus_labels, sample_size=8000, random_state=random_state), 4))
+    print("Agreement single vs consensus (ARI):",
+          round(adjusted_rand_score(labels, consensus_labels), 4))
+    print("Mean stability:", round(stability.mean(), 3),
+          "| very stable (>=0.9):", f"{(stability >= 0.9).mean() * 100:.1f}%",
+          "| ambiguous (<0.6):", f"{(stability < 0.6).mean() * 100:.1f}%")
+    plot_stability(stability)
+    return consensus_labels, stability
+
+
+def default_profile_columns(df):
+    """Default behavioural and demographic columns used for profiling."""
+    return [c for c in [
+        "log_total_spend",
+        "percentage_of_products_bought_promotion",
+        "distinct_stores_visited",
+        "lifetime_total_distinct_products",
+        "customer_age",
+        "education_level",
+        "tenure",
+        "total_children",
+        "number_complaints",
+    ] if c in df.columns]
+
+
+def plot_segment_separation(data, label_col="cluster"):
+    """Plot scaled means and boxplots for the main profiling variables."""
+    cols = default_profile_columns(data)
+    profile = profile_clusters(data, label_col, cols)
+    scaled = plot_cluster_mean_comparison(profile, title="Normalised cluster mean comparison")
+    display(scaled)
+    box_cols = [c for c in [
+        "log_total_spend",
+        "percentage_of_products_bought_promotion",
+        "distinct_stores_visited",
+        "customer_age",
+        "total_children",
+        "number_complaints",
+    ] if c in data.columns]
+    plot_boxplot_grid(data, box_cols, label_col=label_col)
+    return scaled
+
+
+def geographic_profile(data, label_col="cluster"):
+    """Return and plot location profiles by segment."""
+    if not {"latitude", "longitude"}.issubset(data.columns):
+        return pd.DataFrame()
+    profile = (
+        data
+        .groupby(label_col)
+        .agg(
+            customers=(label_col, "size"),
+            mean_latitude=("latitude", "mean"),
+            mean_longitude=("longitude", "mean"),
+            median_latitude=("latitude", "median"),
+            median_longitude=("longitude", "median"),
+            latitude_std=("latitude", "std"),
+            longitude_std=("longitude", "std"),
+        )
+        .round(5)
+    )
+    display(profile)
+
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8), sharex=True, sharey=True)
+    axes = np.atleast_1d(axes).ravel()
+    clusters = sorted(data[label_col].unique())
+    for ax, cluster_id in zip(axes, clusters):
+        sub = data[data[label_col] == cluster_id]
+        ax.scatter(sub["longitude"], sub["latitude"], s=5, alpha=0.35)
+        ax.scatter(
+            sub["longitude"].mean(),
+            sub["latitude"].mean(),
+            s=80,
+            color="red",
+            marker="x",
+        )
+        ax.set_title(f"Cluster {cluster_id}", fontsize=9)
+        ax.grid(True, alpha=0.25)
+    for ax in axes[len(clusters):]:
+        ax.axis("off")
+    fig.suptitle("Customer locations by segment (small multiples)", y=1.02)
+    plt.tight_layout()
+    plt.show()
+    return profile
+
+
+def reattach_outliers_and_export(regular_df, outlier_df, kmeans_model, feature_cols,
+                                 logabs, scaler, data_dir, spend_profile=None,
+                                 complaints_profile=None):
+    """Assign held-aside outliers and save final clustering exports."""
+    X_out = apply_feature_pipeline(outlier_df, feature_cols, logabs, scaler, fit=False)
+    outlier_labels = kmeans_model.predict(X_out)
+    print("Outliers assigned:", len(outlier_labels))
+
+    segments = build_full_assignment(
+        regular_df,
+        kmeans_model.labels_,
+        outlier_df,
+        outlier_labels,
+        label_col="cluster",
+        id_name="customer_id",
+    )
+    expected = len(regular_df) + len(outlier_df)
+    assert segments["customer_id"].nunique() == expected, "Missing customers!"
+    print("Customers in final file:", segments["customer_id"].nunique())
+    print(segments["cluster"].value_counts().sort_index())
+
+    data_dir = str(data_dir)
+    segments.to_csv(f"{data_dir}/customer_segments.csv", index=False)
+    cluster_sizes(regular_df, "cluster").to_csv(f"{data_dir}/segment_summary.csv")
+    if spend_profile is not None:
+        spend_profile.to_csv(f"{data_dir}/segment_spend_profile.csv")
+    if complaints_profile is not None:
+        complaints_profile.to_csv(f"{data_dir}/segment_complaints_profile.csv")
+    print("Saved customer_segments.csv (+ supporting profiles) to", data_dir)
+    return segments
+
+
+
+def plot_sample_dendrogram(X, title, linkage="ward", sample_size=3000,
+                           cut_height=None, random_state=0):
+    """Fit and plot one truncated dendrogram on a customer sample."""
+    _, model = fit_dendrogram_model(
+        X, sample_size=sample_size, linkage=linkage, random_state=random_state
+    )
+    plt.figure(figsize=(12, 5))
+    plt.title(title)
+    plot_dendrogram(model, truncate_mode="level", p=5)
+    if cut_height is not None:
+        plt.axhline(
+            y=cut_height,
+            color="red",
+            linestyle="--",
+            linewidth=1.5,
+            label=f"cut = {cut_height}",
+        )
+        plt.legend(loc="upper right")
+    plt.xlabel("Sample of customers")
+    plt.ylabel("Distance")
+    plt.show()
+
+
+def plot_alternative_dendrograms(X, title_suffix, linkages=None, cut_heights=None,
+                                 sample_size=3000, random_state=0):
+    """Plot complete, average and single linkage dendrogram checks."""
+    linkages = linkages or ["complete", "average", "single"]
+    cut_heights = cut_heights or {}
+    for linkage_name in linkages:
+        plot_sample_dendrogram(
+            X,
+            title=f"{linkage_name.title()} dendrogram (sample) - {title_suffix}",
+            linkage=linkage_name,
+            sample_size=sample_size,
+            cut_height=cut_heights.get(linkage_name),
+            random_state=random_state,
+        )
+
+
+def display_method_benchmarks(method_benchmarks):
+    """Display the benchmark plot and compact ranking tables."""
+    plot_method_k_benchmark(
+        method_benchmarks["plot"],
+        title="Independent method search: silhouette by k",
+    )
+    display(method_benchmarks["summary"])
+
+    print("KMeans candidates")
+    display(method_benchmarks["kmeans"].sort_values("silhouette", ascending=False).head(5))
+
+    print("Best hierarchical candidates")
+    display(method_benchmarks["hierarchical"].head(5))
+
+    print("Best centroid Ward candidates")
+    display(method_benchmarks["centroid_ward"].sort_values(
+        ["silhouette", "r2"], ascending=[False, False]
+    ).head(5))
+
+
+def apply_centroid_ward_macro(data, X, feature_cols, k, micro_k=20, random_state=0):
+    """Fit centroid Ward macro clusters, attach labels and display diagnostics."""
+    micro, centroids, Z, macro_labels = fit_centroid_ward_macro(
+        X,
+        feature_cols,
+        k,
+        micro_k=micro_k,
+        random_state=random_state,
+        n_init=20,
+        plot=True,
+    )
+    data["micro_cluster"] = micro.labels_
+    data["macro_cluster"] = macro_labels
+
+    print("Micro-cluster sizes")
+    display(data["micro_cluster"].value_counts().sort_index())
+
+    print("Macro-cluster sizes")
+    display(data["macro_cluster"].value_counts().sort_index())
+
+    display(centroid_ward_report(X, data["cluster"].values, data["macro_cluster"].values))
+    return micro, centroids, Z
+

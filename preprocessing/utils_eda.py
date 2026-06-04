@@ -887,3 +887,217 @@ def cor_heatmap(corr_matrix, color="#1B4F72"):
     plt.yticks(rotation=0)
     plt.tight_layout()
     plt.show()
+
+def find_density_hotspot(df, lat_col="latitude", lon_col="longitude", bins=50):
+    """Return the centre and count of the densest latitude/longitude grid cell."""
+    geo = df[[lat_col, lon_col]].dropna().copy()
+    lat_bins = np.linspace(geo[lat_col].min(), geo[lat_col].max(), bins + 1)
+    lon_bins = np.linspace(geo[lon_col].min(), geo[lon_col].max(), bins + 1)
+    counts, lon_edges, lat_edges = np.histogram2d(
+        geo[lon_col], geo[lat_col], bins=[lon_bins, lat_bins]
+    )
+    max_cell = np.unravel_index(np.argmax(counts), counts.shape)
+    hotspot_lon = (lon_edges[max_cell[0]] + lon_edges[max_cell[0] + 1]) / 2
+    hotspot_lat = (lat_edges[max_cell[1]] + lat_edges[max_cell[1] + 1]) / 2
+
+    return {
+        "latitude": hotspot_lat,
+        "longitude": hotspot_lon,
+        "customers_in_cell": int(counts[max_cell]),
+    }
+
+
+def haversine_km(lat1, lon1, lat2, lon2):
+    """Calculate distance in kilometres between two coordinate pairs."""
+    radius = 6371
+    lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2
+    return 2 * radius * np.arcsin(np.sqrt(a))
+
+
+def landmark_distances(hotspot_lat, hotspot_lon, landmarks=None):
+    """Compare the hotspot location with relevant Lisbon landmarks."""
+    if landmarks is None:
+        landmarks = pd.DataFrame({
+            "place": ["Cidade Universitaria", "NOVA IMS Campolide", "Entrecampos", "Sete Rios"],
+            "latitude": [38.7529, 38.7328, 38.7475, 38.7416],
+            "longitude": [-9.1579, -9.1604, -9.1487, -9.1660],
+        })
+
+    out = landmarks.copy()
+    out["distance_km"] = out.apply(
+        lambda row: haversine_km(hotspot_lat, hotspot_lon, row["latitude"], row["longitude"]),
+        axis=1,
+    )
+    return out.sort_values("distance_km").reset_index(drop=True)
+
+
+def get_hotspot_customers(df, hotspot_lat, hotspot_lon, radius=0.006):
+    """Select customers in a small square around the hotspot centre."""
+    mask = (
+        df["latitude"].between(hotspot_lat - radius, hotspot_lat + radius)
+        & df["longitude"].between(hotspot_lon - radius, hotspot_lon + radius)
+    )
+    return df.loc[mask].copy(), df.loc[~mask].copy()
+
+
+def compare_hotspot_profile(hotspot_df, outside_df, profile_cols):
+    """Compare average profile values inside and outside the hotspot."""
+    profile_cols = [c for c in profile_cols if c in hotspot_df.columns and c in outside_df.columns]
+    out = pd.DataFrame({
+        "hotspot": hotspot_df[profile_cols].mean(),
+        "outside_hotspot": outside_df[profile_cols].mean(),
+    })
+    out["difference"] = out["hotspot"] - out["outside_hotspot"]
+
+    pooled_std = pd.concat([hotspot_df[profile_cols], outside_df[profile_cols]]).std(ddof=0)
+    out["standardized_difference"] = out["difference"] / pooled_std.replace(0, np.nan)
+    return out
+
+
+def hotspot_age_tables(hotspot_df, outside_df, age_col="customer_age"):
+    """Return age summary and age-band distribution for the hotspot analysis."""
+    age_bins = [0, 24, 34, 44, 54, 64, 200]
+    age_labels = ["<=24", "25-34", "35-44", "45-54", "55-64", "65+"]
+
+    summary = pd.DataFrame({
+        "hotspot": hotspot_df[age_col].describe(),
+        "outside_hotspot": outside_df[age_col].describe(),
+    })
+    distribution = pd.DataFrame({
+        "hotspot_%": pd.cut(
+            hotspot_df[age_col], age_bins, labels=age_labels
+        ).value_counts(normalize=True).sort_index() * 100,
+        "outside_hotspot_%": pd.cut(
+            outside_df[age_col], age_bins, labels=age_labels
+        ).value_counts(normalize=True).sort_index() * 100,
+    })
+    return summary, distribution
+
+
+def hotspot_segment_mix(hotspot_df, segments_path):
+    """Return the segment mix for hotspot customers when segment labels exist."""
+    segments_path = os.fspath(segments_path)
+    if not os.path.exists(segments_path):
+        return None
+
+    segments = pd.read_csv(segments_path).set_index("customer_id")
+    hotspot_with_segments = hotspot_df.join(segments, how="left")
+    if "cluster_name" in hotspot_with_segments.columns:
+        series = hotspot_with_segments["cluster_name"]
+    else:
+        series = hotspot_with_segments["cluster"]
+
+    return (
+        series.value_counts(normalize=True)
+        .mul(100)
+        .round(1)
+        .rename("hotspot_share_%")
+        .to_frame()
+    )
+
+def plot_hotspot_comparison(hotspot_df, outside_df, cols, title="Hotspot vs outside profile"):
+    """Plot average values inside and outside the geographic hotspot."""
+    cols = [c for c in cols if c in hotspot_df.columns and c in outside_df.columns]
+    if not cols:
+        raise ValueError("None of the selected columns exist in both DataFrames.")
+
+    plot_df = pd.DataFrame({
+        "feature": cols,
+        "Hotspot": hotspot_df[cols].mean().values,
+        "Outside hotspot": outside_df[cols].mean().values,
+    })
+    plot_df = plot_df.melt(id_vars="feature", var_name="area", value_name="average")
+
+    height = max(4, 0.45 * len(cols))
+    plt.figure(figsize=(10, height))
+    sns.barplot(data=plot_df, y="feature", x="average", hue="area", palette=["#B2543D", "#7E6A43"])
+    plt.title(title)
+    plt.xlabel("Average value")
+    plt.ylabel("")
+    plt.grid(axis="x", alpha=0.25)
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_hotspot_age_distribution(hotspot_df, outside_df, age_col="customer_age"):
+    """Plot age-band distribution inside and outside the hotspot."""
+    _, age_distribution = hotspot_age_tables(hotspot_df, outside_df, age_col=age_col)
+    plot_df = age_distribution.reset_index().rename(columns={"index": "age_band"})
+    first_col = plot_df.columns[0]
+    plot_df = plot_df.rename(columns={first_col: "age_band"})
+    plot_df = plot_df.melt(id_vars="age_band", var_name="area", value_name="share_%")
+    plot_df["area"] = plot_df["area"].replace({
+        "hotspot_%": "Hotspot",
+        "outside_hotspot_%": "Outside hotspot",
+    })
+
+    plt.figure(figsize=(9, 5))
+    sns.barplot(data=plot_df, x="age_band", y="share_%", hue="area", palette=["#B2543D", "#7E6A43"])
+    plt.title("Age distribution: hotspot vs outside")
+    plt.xlabel("Age band")
+    plt.ylabel("Share of customers (%)")
+    plt.grid(axis="y", alpha=0.25)
+    plt.tight_layout()
+    plt.show()
+
+def categorical_summary(df, cols):
+    """Return counts and percentages for selected categorical or binary columns."""
+    rows = []
+    for col in [c for c in cols if c in df.columns]:
+        counts = df[col].value_counts(dropna=False)
+        perc = df[col].value_counts(dropna=False, normalize=True) * 100
+        for value in counts.index:
+            rows.append({
+                "column": col,
+                "value": value,
+                "count": int(counts.loc[value]),
+                "percentage_%": round(float(perc.loc[value]), 2),
+            })
+    return pd.DataFrame(rows)
+
+
+def plot_categorical_summary(df, cols):
+    """Plot distributions for selected categorical or binary columns."""
+    cols = [c for c in cols if c in df.columns]
+    if not cols:
+        raise ValueError("None of the selected columns exist in the DataFrame.")
+
+    n_cols = 2
+    n_rows = int(np.ceil(len(cols) / n_cols))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(12, 4 * n_rows))
+    axes = np.atleast_1d(axes).ravel()
+
+    for ax, col in zip(axes, cols):
+        order = df[col].value_counts(dropna=False).index
+        sns.countplot(data=df, x=col, order=order, ax=ax, color="#B77A45")
+        ax.set_title(col)
+        ax.set_xlabel("")
+        ax.set_ylabel("Customers")
+        ax.tick_params(axis="x", rotation=30)
+
+    for ax in axes[len(cols):]:
+        ax.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+
+def preprocessing_summary_table(raw_df, regular_df, outlier_df=None, exported_files=None):
+    """Create a compact final summary of the preprocessing outputs."""
+    outlier_rows = 0 if outlier_df is None else len(outlier_df)
+    exported_files = exported_files or []
+    rows = [
+        {"item": "Initial rows", "value": len(raw_df)},
+        {"item": "Regular rows exported", "value": len(regular_df)},
+        {"item": "Outlier rows kept aside", "value": outlier_rows},
+        {"item": "Total rows preserved", "value": len(regular_df) + outlier_rows},
+        {"item": "Final exported features", "value": regular_df.shape[1]},
+        {"item": "Missing values in regular export", "value": int(regular_df.isna().sum().sum())},
+        {"item": "Absolute spend features", "value": len([c for c in regular_df.columns if c.startswith("lifetime_spend_")])},
+        {"item": "Exported files", "value": ", ".join(exported_files)},
+    ]
+    return pd.DataFrame(rows)
+
