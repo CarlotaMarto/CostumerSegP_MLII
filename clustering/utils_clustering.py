@@ -923,11 +923,22 @@ def plot_som_quantization_curve(curve_df):
     plt.show()
 
 
-def plot_som_umatrix(som, title="SOM U-Matrix"):
+def plot_som_umatrix(som, title="SOM U-Matrix", annot=False):
     """Plot the SOM distance map."""
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(som.distance_map().T, cmap="viridis", annot=True, fmt=".2f",
-                cbar_kws={"label": "Neighbour distance"})
+    distances = som.distance_map().T
+    height = max(4, distances.shape[0] * 0.35)
+    width = max(5, distances.shape[1] * 0.35)
+
+    plt.figure(figsize=(width, height))
+    sns.heatmap(
+        distances,
+        cmap="viridis",
+        annot=annot,
+        fmt=".2f",
+        xticklabels=True,
+        yticklabels=True,
+        cbar_kws={"label": "Neighbour distance"},
+    )
     plt.title(title)
     plt.xlabel("SOM row")
     plt.ylabel("SOM column")
@@ -935,7 +946,7 @@ def plot_som_umatrix(som, title="SOM U-Matrix"):
     plt.show()
 
 
-def plot_som_unit_counts(labels, grid=(3, 3), title="Customers per SOM unit"):
+def plot_som_unit_counts(labels, grid=(3, 3), title="Customers per SOM unit", annot=None):
     """Plot the number of observations assigned to each SOM unit."""
     counts = pd.Series(labels).value_counts().sort_index()
     mat = np.zeros(grid[0] * grid[1], dtype=int)
@@ -944,9 +955,21 @@ def plot_som_unit_counts(labels, grid=(3, 3), title="Customers per SOM unit"):
             mat[int(unit)] = int(count)
     mat = mat.reshape(grid)
 
-    plt.figure(figsize=(5, 4))
-    sns.heatmap(mat.T, cmap="Blues", annot=True, fmt="d",
-                cbar_kws={"label": "Customers"})
+    if annot is None:
+        annot = max(grid) <= 10
+
+    height = max(4, grid[1] * 0.35)
+    width = max(5, grid[0] * 0.35)
+    plt.figure(figsize=(width, height))
+    sns.heatmap(
+        mat.T,
+        cmap="Blues",
+        annot=annot,
+        fmt="d",
+        xticklabels=True,
+        yticklabels=True,
+        cbar_kws={"label": "Customers"},
+    )
     plt.title(title)
     plt.xlabel("SOM row")
     plt.ylabel("SOM column")
@@ -972,7 +995,14 @@ def plot_som_feature_maps(som, feature_names, features=None, n_cols=3,
 
     for ax, feature in zip(axes, selected):
         idx = feature_names.index(feature)
-        sns.heatmap(weights[:, :, idx].T, ax=ax, cmap=cmap, cbar=True)
+        sns.heatmap(
+            weights[:, :, idx].T,
+            ax=ax,
+            cmap=cmap,
+            cbar=True,
+            xticklabels=False,
+            yticklabels=False,
+        )
         ax.set_title(feature)
         ax.set_xlabel("SOM row")
         ax.set_ylabel("SOM column")
@@ -985,16 +1015,8 @@ def plot_som_feature_maps(som, feature_names, features=None, n_cols=3,
 
 
 # ============================================================
-# Ensemble / consensus clustering (robustness of the segmentation)
+# Ensemble / consensus clustering
 # ============================================================
-#
-# A single KMeans depends on its random initialisation. An ensemble runs it many
-# times, ALIGNS the cluster labels across runs (a permutation problem solved with
-# the Hungarian algorithm on the confusion matrix) and majority-votes each
-# customer's segment. This yields a consensus labelling plus a per-customer
-# stability score = fraction of runs that agree with the consensus. High stability
-# means the structure is real and not an artefact of one lucky seed; low-stability
-# customers sit between segments and can be flagged in the report.
 
 def consensus_kmeans(X, k, n_runs=25, random_state=0, n_init=5):
     """Stability-based ensemble of KMeans runs.
@@ -1016,11 +1038,11 @@ def consensus_kmeans(X, k, n_runs=25, random_state=0, n_init=5):
     aligned = [ref]
     for lab in runs[1:]:
         cm = confusion_matrix(ref, lab, labels=list(range(k)))
-        row, col = linear_sum_assignment(-cm)          # match run labels to ref
+        row, col = linear_sum_assignment(-cm)
         mapping = {c: r for r, c in zip(row, col)}
         aligned.append(np.array([mapping.get(x, x) for x in lab]))
 
-    A = np.vstack(aligned).T                            # (n_points, n_runs)
+    A = np.vstack(aligned).T
     counts = np.zeros((n, k), dtype=int)
     for j in range(A.shape[1]):
         counts[np.arange(n), A[:, j]] += 1

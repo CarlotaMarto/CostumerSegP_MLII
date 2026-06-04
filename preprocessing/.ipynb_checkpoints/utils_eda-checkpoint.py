@@ -1,4 +1,8 @@
-"""Utility functions used in the EDA and preprocessing notebook."""
+"""Utility functions for the EDA and preprocessing workflow.
+
+The notebook keeps the analysis narrative. This module contains reusable data
+quality checks, feature engineering, outlier handling and diagnostic plots.
+"""
 
 
 import os
@@ -9,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from sklearn.cluster import DBSCAN, KMeans
+from sklearn.cluster import KMeans
 from sklearn.impute import KNNImputer
 from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import MinMaxScaler, RobustScaler, StandardScaler
@@ -45,7 +49,14 @@ def get_missing_report(df):
 
 
 def get_invalid_years(df, year_col="year_first_transaction"):
-    """Return rows with transaction years greater than the current year."""
+    """Identify rows where the transaction year is greater than the current year.
+
+    Note
+    ----
+    Use this to FLAG invalid years and set them to NaN (then impute), rather
+    than dropping the rows. Dropping rows here silently loses customers and
+    breaks the "every customer ends up in a segment" guarantee.
+    """
     current_year = datetime.now().year
 
     if year_col not in df.columns:
@@ -55,7 +66,27 @@ def get_invalid_years(df, year_col="year_first_transaction"):
 
 
 def get_education_info(row):
-    """Extract education level and a cleaned customer name."""
+    """Extract education level safely from the beginning of customer_name.
+
+    Returns
+    -------
+    pandas.Series
+        [education_level, clean_customer_name]
+
+    Education encoding (YEARS of education = interval scale):
+        12 = Unknown / High-School
+        15 = BSc
+        17 = MSc
+        22 = PhD
+
+    Using years rather than 0/1/2/3 codes gives a genuine interval scale: the
+    real gaps between degrees (e.g. 5 years from MSc to PhD vs 2 from BSc to
+    MSc) are preserved, which matters for the Euclidean distance in K-Means.
+    Being a true numeric scale, it should be scaled as a CONTINUOUS feature
+    (with the same scaler as the others), not kept apart as an ordinal code.
+    The chosen year values are a reasonable assumption about typical degree
+    duration, not a measured fact, and should be documented as such.
+    """
     if pd.isna(row["customer_name"]):
         return pd.Series([12, ""])
 
@@ -100,7 +131,27 @@ def apply_cyclic_transformation(df, col, max_val=24):
 
 
 def apply_knn_imputation(df, n_neighbors=5, exclude_cols=None):
-    """Apply KNN imputation to numerical columns."""
+    """Apply KNN imputation to numerical columns.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    n_neighbors : int, default=5
+    exclude_cols : list, optional
+        Columns excluded from the distance calculation and imputation
+        (identifiers, binary flags such as is_male / customer_loyalty_flag,
+        and the ordinal education_level so its codes are not averaged).
+
+    Notes
+    -----
+    Numerical features are scaled before imputation because KNNImputer uses
+    distances between rows. StandardScaler ignores NaN during fit, so the
+    presence of missing values is fine.
+
+    ORDER: run this AFTER gross outliers have been set aside
+    (`split_outliers_iqr`). Imputing with outliers still in the data
+    distorts both the scaler statistics and the neighbour distances.
+    """
     df_imputed = df.copy()
     exclude_cols = exclude_cols or []
     exclude_cols = [col for col in exclude_cols if col in df_imputed.columns]
@@ -134,7 +185,11 @@ def apply_knn_imputation(df, n_neighbors=5, exclude_cols=None):
 
 
 def validate_imputation(df_original, df_imputed, columns):
-    """Check whether imputation produced suspicious values."""
+    """Validate whether imputation created unrealistic values.
+
+    Fix: cyclic features (typical_hour_sin / typical_hour_cos) and geographic
+    coordinates are LEGITIMATELY negative, so they are not flagged.
+    """
     issues = []
     allowed_negative = {
         "longitude",
@@ -178,7 +233,32 @@ def split_outliers_iqr(
     min_flagged_features=1,
     max_remove_pct=5.0,
 ):
-    """Split regular observations and IQR-based outliers."""
+    """Detect and SEPARATE outliers on raw, skewed features (do not delete them).
+
+    This mirrors the report's logic: outliers are kept aside in a separate
+    dataset instead of being discarded, so they can later be assigned to the
+    nearest cluster centroid. Run it on the RAW absolute `lifetime_spend_*`
+    columns plus other tailed numerics, BEFORE feature engineering.
+
+    Parameters
+    ----------
+    df : pandas.DataFrame
+    feature_cols : list
+        Continuous columns to inspect (raw spends + tailed behavioural vars).
+        Exclude binary flags, ordinal codes and geo coordinates.
+    iqr_multiplier : float, default=3.0
+        Bounds are Q1 - m*IQR and Q3 + m*IQR. Higher = more conservative.
+    min_flagged_features : int, default=1
+        A row is an outlier when it is extreme on at least this many columns.
+        Increase it (e.g. 2 or 3) for a stricter "consensus across features".
+    max_remove_pct : float, default=5.0
+        Safeguard. If more than this share would be removed, a warning is
+        printed but the split is still returned for review.
+
+    Returns
+    -------
+    (regular_df, outlier_df, summary_df)
+    """
     feature_cols = [c for c in feature_cols if c in df.columns]
     if not feature_cols:
         raise ValueError("None of the requested feature_cols are in the DataFrame.")
@@ -209,101 +289,11 @@ def split_outliers_iqr(
           f"({outlier_pct:.2f}%)")
 
     if outlier_pct > max_remove_pct:
-        print(f"Outlier share is above {max_remove_pct:.1f}%.")
+        print(f"Note: this is above the {max_remove_pct:.1f}% reference limit. "
+              f"Consider raising iqr_multiplier or min_flagged_features.")
 
     regular_df = df.loc[~outlier_mask].copy()
     outlier_df = df.loc[outlier_mask].copy()
-
-    print(f"Regular customers: {len(regular_df):,}")
-    print(f"Outliers kept aside: {len(outlier_df):,}")
-    print(f"Total preserved: {len(regular_df) + len(outlier_df):,}")
-
-    return regular_df, outlier_df, summary
-
-def split_outliers_consensus(
-    df,
-    iqr_k=2.0,
-    dbscan_eps=1.0,
-    som_percentile=95,
-    bounded_caps=None,
-    excluded_cols=None,
-    max_remove_pct=5.0,
-):
-    """Split outliers flagged by IQR, DBSCAN and SOM."""
-    try:
-        from minisom import MiniSom
-    except ImportError as exc:
-        raise ImportError("MiniSom is required for consensus outlier detection.") from exc
-
-    bounded_caps = bounded_caps or {
-        "kids_home": 3,
-        "teens_home": 2,
-        "number_complaints": 2,
-        "distinct_stores_visited": 6,
-    }
-    excluded_cols = set(excluded_cols or [
-        "customer_loyalty_flag",
-        "is_male",
-        "latitude",
-        "longitude",
-        "year_first_transaction",
-        "typical_hour",
-        "typical_hour_sin",
-        "typical_hour_cos",
-    ])
-
-    detect_df = df.copy()
-    for col, cap in bounded_caps.items():
-        if col in detect_df.columns:
-            detect_df[col] = np.minimum(detect_df[col], cap)
-
-    numeric_cols = [
-        c for c in detect_df.select_dtypes(include="number").columns
-        if c not in excluded_cols
-    ]
-    if not numeric_cols:
-        raise ValueError("No numeric columns available for consensus outlier detection.")
-
-    matrix = detect_df[numeric_cols].copy()
-    matrix = matrix.fillna(matrix.median(numeric_only=True))
-
-    iqr_mask = pd.Series(False, index=df.index)
-    iqr_counts = []
-    for col in numeric_cols:
-        q1, q3 = matrix[col].quantile([0.25, 0.75])
-        iqr = q3 - q1
-        low = q1 - iqr_k * iqr
-        high = q3 + iqr_k * iqr
-        col_mask = (matrix[col] < low) | (matrix[col] > high)
-        iqr_mask |= col_mask
-        iqr_counts.append(int(col_mask.sum()))
-
-    x_std = StandardScaler().fit_transform(matrix)
-    db_labels = DBSCAN(eps=dbscan_eps, min_samples=len(numeric_cols) + 1).fit_predict(x_std)
-    dbscan_mask = pd.Series(db_labels == -1, index=df.index)
-
-    som = MiniSom(10, 10, x_std.shape[1], sigma=1.0, learning_rate=0.5, random_seed=0)
-    som.random_weights_init(x_std)
-    som.train_random(x_std, 500, verbose=False)
-    q_error = np.array([som.quantization_error([row]) for row in x_std])
-    som_mask = pd.Series(q_error > np.percentile(q_error, som_percentile), index=df.index)
-
-    final_mask = iqr_mask & dbscan_mask & som_mask
-    outlier_pct = final_mask.mean() * 100
-
-    summary = pd.DataFrame([
-        {"Method": "IQR", "Flagged": int(iqr_mask.sum()), "Pct": round(iqr_mask.mean() * 100, 2)},
-        {"Method": "DBSCAN", "Flagged": int(dbscan_mask.sum()), "Pct": round(dbscan_mask.mean() * 100, 2)},
-        {"Method": "SOM", "Flagged": int(som_mask.sum()), "Pct": round(som_mask.mean() * 100, 2)},
-        {"Method": "Consensus", "Flagged": int(final_mask.sum()), "Pct": round(outlier_pct, 2)},
-    ])
-
-    print(summary.to_string(index=False))
-    if outlier_pct > max_remove_pct:
-        print(f"Outlier share is above {max_remove_pct:.1f}%.")
-
-    regular_df = df.loc[~final_mask].copy()
-    outlier_df = df.loc[final_mask].copy()
 
     print(f"Regular customers: {len(regular_df):,}")
     print(f"Outliers kept aside: {len(outlier_df):,}")
@@ -318,7 +308,33 @@ def engineer_clustering_features(
     spend_prefix="lifetime_spend_",
     keep_absolute_spend=True,
 ):
-    """Create the engineered variables used for clustering."""
+    """Build the engineered features used downstream.
+
+    This version deliberately keeps the absolute lifetime spend columns by
+    default. Absolute spend variables contain customer value and purchasing
+    intensity information, which are useful for distance-based clustering after
+    scaling.
+
+    Applies, when the source columns exist:
+      * tenure = current_year - year_first_transaction
+      * total_children = kids_home + teens_home
+      * lifetime_spend_technology = electronics + videogames (originals dropped)
+      * log_total_spend = log1p(total_spend)
+
+    Parameters
+    ----------
+    keep_absolute_spend : bool, default True
+        If True, keeps the lifetime_spend_* columns in the exported dataset.
+        These columns must be scaled later in the clustering notebook before
+        distance-based algorithms are fitted. If False, absolute spend columns
+        are dropped after creating the requested aggregate features.
+
+    Notes
+    -----
+    The helper column total_spend is dropped to avoid keeping a perfect duplicate
+    of the spend block. The log_total_spend feature remains as a compact value
+    indicator for profiling and optional modelling.
+    """
     out = df.copy()
 
     if "year_first_transaction" in out.columns:
@@ -336,15 +352,15 @@ def engineer_clustering_features(
     spend = [c for c in out.columns if c.startswith(spend_prefix)]
     if spend:
         out["total_spend"] = out[spend].sum(axis=1)
+
         out["log_total_spend"] = np.log1p(np.clip(out["total_spend"], 0, None))
 
+        # Keep absolute spend variables for the scaled clustering alternative,
+        # but remove the helper total_spend to avoid a redundant total column.
         drop_cols = ["total_spend"]
         if not keep_absolute_spend:
             drop_cols = spend + drop_cols
         out = out.drop(columns=drop_cols)
-
-    redundant_cols = ["year_first_transaction", "typical_hour"]
-    out = out.drop(columns=[c for c in redundant_cols if c in out.columns])
 
     return out
 
@@ -401,7 +417,13 @@ def get_high_correlations(df, threshold=0.7):
 
 
 def build_clustering_features(df, exclude_cols=None):
-    """Return numeric clustering features after excluding selected columns."""
+    """Return the numeric columns that should DRIVE the clustering distance.
+
+    `exclude_cols` are identity / geographic features that must be kept for
+    profiling but must NOT influence the distance, e.g.
+        ["is_male", "customer_loyalty_flag", "latitude", "longitude",
+         "loyalty_card_number", "year_first_transaction"]
+    """
     exclude_cols = set(exclude_cols or [])
     cols = [
         c
@@ -440,7 +462,21 @@ def test_scalers_kmeans(
     k_values=(4, 5, 6, 7, 8),
     random_state=42,
 ):
-    """Compare scalers with KMeans over a range of k values."""
+    """Compare Standard, MinMax and Robust scalers with KMeans.
+
+    Changes vs the old version:
+      * `exclude_cols` are DROPPED from the distance (identity/geo features),
+        not merely left unscaled. They no longer influence the clustering.
+      * the scaler is chosen by the MEAN silhouette over a range of k, not a
+        single hard-coded k=4 (which always favours the smallest k).
+      * binary columns are kept as 0/1; ordinal columns are standardised.
+
+    Returns
+    -------
+    (best_scaler_name, scores_table, scaled_df_with_best_scaler)
+        scaled_df_with_best_scaler contains ONLY the clustering features
+        (excluded identity/geo columns are not in it).
+    """
     features = build_clustering_features(df, exclude_cols=exclude_cols)
     if features.shape[1] == 0:
         raise ValueError("No numerical columns available for clustering.")
@@ -755,12 +791,8 @@ def correlation_columns(df, exclude_cols=None):
 def separate_outliers_and_impute_regular(
     df,
     index_col="customer_id",
-    outlier_method="consensus",
     iqr_multiplier=3.0,
     min_flagged_features=2,
-    iqr_k=2.0,
-    dbscan_eps=1.0,
-    som_percentile=95,
     max_remove_pct=5.0,
 ):
     """Separate raw outliers and impute the regular customer base."""
@@ -771,27 +803,19 @@ def separate_outliers_and_impute_regular(
     if index_col in out.columns:
         out = out.set_index(index_col, drop=True)
 
-    if outlier_method == "consensus":
-        regular_df, outlier_df, outlier_summary = split_outliers_consensus(
-            out,
-            iqr_k=iqr_k,
-            dbscan_eps=dbscan_eps,
-            som_percentile=som_percentile,
-            max_remove_pct=max_remove_pct,
-        )
-    else:
-        raw_spend_cols = [c for c in out.columns if c.startswith("lifetime_spend_")]
-        tailed_cols = [
-            c for c in ["customer_age", "distinct_stores_visited", "lifetime_total_distinct_products"]
-            if c in out.columns
-        ]
-        regular_df, outlier_df, outlier_summary = split_outliers_iqr(
-            out,
-            feature_cols=raw_spend_cols + tailed_cols,
-            iqr_multiplier=iqr_multiplier,
-            min_flagged_features=min_flagged_features,
-            max_remove_pct=max_remove_pct,
-        )
+    raw_spend_cols = [c for c in out.columns if c.startswith("lifetime_spend_")]
+    tailed_cols = [
+        c for c in ["customer_age", "distinct_stores_visited", "lifetime_total_distinct_products"]
+        if c in out.columns
+    ]
+
+    regular_df, outlier_df, outlier_summary = split_outliers_iqr(
+        out,
+        feature_cols=raw_spend_cols + tailed_cols,
+        iqr_multiplier=iqr_multiplier,
+        min_flagged_features=min_flagged_features,
+        max_remove_pct=max_remove_pct,
+    )
 
     before_imputation = regular_df.copy()
     exclude_cols = [

@@ -8,13 +8,13 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 CLUSTER_NAMES = {
-    0: "Loyal High-Value Grocery Shoppers",
-    1: "Pet-Oriented Regulars",
+    0: "Young Promotion-Driven Shoppers",
+    1: "Balanced Grocery Regulars",
     2: "Hygiene & Wellness Shoppers",
-    3: "Family Stock-Up Shoppers",
-    4: "Young Promotion Seekers",
-    5: "Vegetable-Focused Seniors",
-    6: "Tech & Alcohol Shoppers",
+    3: "Family High-Value Stock-Up Shoppers",
+    4: "Vegetable-Focused Mature Shoppers",
+    5: "Tech & Alcohol Specialists",
+    6: "Loyal High-Value Grocery Shoppers",
 }
 
 
