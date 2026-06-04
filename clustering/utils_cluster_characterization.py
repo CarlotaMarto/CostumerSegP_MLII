@@ -9,14 +9,13 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 CLUSTER_NAMES = {
-    0: "Value Seekers",
-    1: "Wellness",
-    2: "Traditional Shoppers",
-    3: "Vegetarians",
-    4: "Promotion Hunters",
-    5: "Tech Enthusiasts",
-    6: "Large Families",
-    7: "Loyal Explorers",
+    0: "Promo Shoppers",
+    1: "Steady Shoppers",
+    2: "Wellness",
+    3: "Big Families",
+    4: "Veggies",
+    5: "Technologists",
+    6: "Loyalists",
 }
 
 
