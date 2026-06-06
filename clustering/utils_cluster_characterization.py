@@ -4,20 +4,66 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap, ListedColormap
 from IPython.display import display
 from sklearn.preprocessing import MinMaxScaler
 
+PROJECT_PALETTE = [
+    "#B87540",
+    "#B2543D",
+    "#7E6A43",
+    "#A8B7BA",
+    "#D8C0B4",
+    "#C8AB8C",
+    "#5A3516",
+    "#B98F70",
+]
+CLUSTER_PALETTE = [
+    "#B87540",  # 0 Loyalists
+    "#B2543D",  # 1 Vegetarians
+    "#7E6A43",  # 2 Regulars
+    "#78969B",  # 3 Promoters
+    "#D08F78",  # 4 Wellness
+    "#2F7A6A",  # 5 Families
+    "#5A3516",  # 6 Economizers
+    "#9B7DB8",  # 7 Techies
+]
+MAIN_COLOR = "#B87540"
+ACCENT_COLOR = "#B2543D"
+NOTE_COLOR = "#7E6A43"
+SECONDARY_COLOR = "#A8B7BA"
+LIGHT_COLOR = "#F3EEE6"
+DARK_COLOR = "#5A3516"
+
+
+def sequential_cmap():
+    return LinearSegmentedColormap.from_list(
+        "project_sequential",
+        [LIGHT_COLOR, "#C8AB8C", MAIN_COLOR, ACCENT_COLOR, DARK_COLOR],
+    )
+
+
+def diverging_cmap():
+    return LinearSegmentedColormap.from_list(
+        "project_diverging",
+        [ACCENT_COLOR, LIGHT_COLOR, SECONDARY_COLOR],
+    )
+
+
+def cluster_cmap():
+    return ListedColormap(CLUSTER_PALETTE)
+
 
 CLUSTER_NAMES = {
-    0: "Promo Shoppers",
-    1: "Steady Shoppers",
-    2: "Wellness",
-    3: "Big Families",
-    4: "Veggies",
-    5: "Technologists",
-    6: "Loyalists",
+    0: "Loyalists",
+    1: "Vegetarians",
+    2: "Regulars",
+    3: "Promoters",
+    4: "Wellness",
+    5: "Families",
+    6: "Economizers",
+    7: "Techies",
 }
-
 
 def load_characterization_data(data_dir="../datasets"):
     """Load features and cluster assignments, including outliers."""
@@ -28,6 +74,17 @@ def load_characterization_data(data_dir="../datasets"):
 
     features = pd.concat([regular, outliers], ignore_index=True)
     df = features.merge(segments, on="customer_id", how="inner")
+
+    original = pd.read_csv(f"{data_dir}/customer_info.csv")
+    granular_cols = [
+        "customer_id",
+        "lifetime_spend_electronics",
+        "lifetime_spend_videogames",
+    ]
+    granular_cols = [c for c in granular_cols if c in original.columns]
+    if len(granular_cols) > 1:
+        df = df.merge(original[granular_cols], on="customer_id", how="left")
+
     df["cluster_name"] = df["cluster"].map(CLUSTER_NAMES).fillna(df["cluster"].astype(str))
     return df
 
@@ -61,7 +118,7 @@ def scaled_profile(profile_df):
 def plot_cluster_sizes(size_df):
     """Bar chart of customers per segment."""
     plt.figure(figsize=(9, 4))
-    sns.barplot(data=size_df, x="cluster", y="customers", color="#1B4F72")
+    sns.barplot(data=size_df, x="cluster", y="customers", color=MAIN_COLOR)
     plt.title("Customers per segment")
     plt.xlabel("Cluster")
     plt.ylabel("Customers")
@@ -73,7 +130,7 @@ def plot_profile_heatmap(profile_df, title="Cluster profile"):
     """Heatmap of profile means in original units."""
     data = profile_df.drop(index="OVERALL", errors="ignore")
     plt.figure(figsize=(max(9, data.shape[1] * 0.9), max(4, data.shape[0] * 0.7)))
-    sns.heatmap(data, annot=True, fmt=".1f", cmap="Blues", linewidths=0.5)
+    sns.heatmap(data, annot=True, fmt=".1f", cmap=sequential_cmap(), linewidths=0.5)
     plt.title(title)
     plt.ylabel("Cluster")
     plt.xticks(rotation=45, ha="right")
@@ -88,7 +145,7 @@ def plot_scaled_profile(profile_df, title="Normalised segment comparison"):
         id_vars="cluster", var_name="feature", value_name="scaled_mean"
     )
     plt.figure(figsize=(10, max(5, scaled.shape[1] * 0.38)))
-    sns.scatterplot(data=long, x="scaled_mean", y="feature", hue="cluster", s=90)
+    sns.scatterplot(data=long, x="scaled_mean", y="feature", hue="cluster", palette=CLUSTER_PALETTE, s=90)
     plt.title(title)
     plt.xlabel("Scaled mean within feature")
     plt.ylabel("Feature")
@@ -96,6 +153,54 @@ def plot_scaled_profile(profile_df, title="Normalised segment comparison"):
     plt.tight_layout()
     plt.show()
     return scaled
+
+
+
+def plot_radar_profiles(profile_df, features=None, cluster_names=None, title="Segment radar profiles", max_cols=4):
+    data = scaled_profile(profile_df)
+    if features is None:
+        features = list(data.columns)
+    features = [f for f in features if f in data.columns]
+    if not features:
+        return pd.DataFrame()
+
+    plot_data = data[features]
+    labels = [f.replace("lifetime_spend_", "").replace("percentage_of_products_bought_promotion", "promotion") for f in features]
+    angles = np.linspace(0, 2 * np.pi, len(features), endpoint=False).tolist()
+    angles += angles[:1]
+
+    n_clusters = len(plot_data)
+    n_cols = min(max_cols, n_clusters)
+    n_rows = int(np.ceil(n_clusters / n_cols))
+    fig, axes = plt.subplots(
+        n_rows,
+        n_cols,
+        figsize=(4.2 * n_cols, 4.2 * n_rows),
+        subplot_kw={"projection": "polar"},
+    )
+    axes = np.atleast_1d(axes).ravel()
+
+    for pos, (cluster, row) in enumerate(plot_data.iterrows()):
+        ax = axes[pos]
+        values = row.tolist() + row.tolist()[:1]
+        color = CLUSTER_PALETTE[pos % len(CLUSTER_PALETTE)]
+        label = cluster_names.get(cluster, f"Cluster {cluster}") if cluster_names else f"Cluster {cluster}"
+        ax.plot(angles, values, color=color, linewidth=2)
+        ax.fill(angles, values, color=color, alpha=0.25)
+        ax.set_title(label, pad=12, fontsize=11)
+        ax.set_xticks(angles[:-1])
+        ax.set_xticklabels(labels, fontsize=8)
+        ax.set_yticks([0.25, 0.5, 0.75, 1.0])
+        ax.set_yticklabels(["0.25", "0.50", "0.75", "1.00"], fontsize=7)
+        ax.set_ylim(0, 1)
+
+    for ax in axes[n_clusters:]:
+        ax.axis("off")
+
+    fig.suptitle(title, y=1.02, fontsize=14)
+    plt.tight_layout()
+    plt.show()
+    return plot_data.round(2)
 
 
 def plot_feature_bars(df, features, cluster_col="cluster", max_cols=3):
@@ -108,7 +213,7 @@ def plot_feature_bars(df, features, cluster_col="cluster", max_cols=3):
 
     for ax, feature in zip(axes, features):
         means = df.groupby(cluster_col)[feature].mean().reset_index()
-        sns.barplot(data=means, x=cluster_col, y=feature, ax=ax, color="#7FB3D5")
+        sns.barplot(data=means, x=cluster_col, y=feature, ax=ax, color=SECONDARY_COLOR)
         ax.set_title(feature)
         ax.set_xlabel("Cluster")
 
@@ -134,7 +239,7 @@ def plot_binary_share_by_cluster(df, columns, cluster_col="cluster"):
     summary["share_%"] = summary["share"] * 100
 
     plt.figure(figsize=(10, 4.5))
-    sns.barplot(data=summary, x=cluster_col, y="share_%", hue="feature", palette=["#B87540", "#A9B9BB", "#836D43"])
+    sns.barplot(data=summary, x=cluster_col, y="share_%", hue="feature", palette=[MAIN_COLOR, SECONDARY_COLOR, NOTE_COLOR])
     plt.title("Binary profile by cluster")
     plt.xlabel("Cluster")
     plt.ylabel("Percentage of customers")
@@ -160,7 +265,7 @@ def plot_mean_profile_bars(df, columns, cluster_col="cluster", title="Mean profi
 
     for ax, feature in zip(axes, columns):
         sub = long[long["feature"] == feature]
-        sns.barplot(data=sub, x=cluster_col, y="mean", ax=ax, color="#B87540")
+        sns.barplot(data=sub, x=cluster_col, y="mean", ax=ax, color=MAIN_COLOR)
         ax.set_title(feature)
         ax.set_xlabel("Cluster")
         ax.set_ylabel("Mean")
@@ -181,7 +286,7 @@ def plot_boxplot_grid(df, features, cluster_col="cluster", max_cols=3):
     axes = np.atleast_1d(axes).ravel()
 
     for ax, feature in zip(axes, features):
-        sns.boxplot(data=df, x=cluster_col, y=feature, ax=ax, color="#A9CCE3", fliersize=1.5)
+        sns.boxplot(data=df, x=cluster_col, y=feature, ax=ax, color=SECONDARY_COLOR, fliersize=1.5)
         ax.set_title(feature)
         ax.set_xlabel("Cluster")
 
@@ -222,7 +327,10 @@ def export_id_cluster(df, output_path="../datasets/id_and_cluster.csv"):
 
 def spend_columns(df):
     """Lifetime spend variables available in the characterization data."""
-    return [c for c in df.columns if c.startswith("lifetime_spend_")]
+    cols = [c for c in df.columns if c.startswith("lifetime_spend_")]
+    if {"lifetime_spend_electronics", "lifetime_spend_videogames"}.issubset(cols):
+        cols = [c for c in cols if c != "lifetime_spend_technology"]
+    return cols
 
 
 def behavioural_profile_columns(df):
@@ -252,7 +360,8 @@ def key_plot_columns(df):
         "lifetime_spend_fish",
         "lifetime_spend_hygiene",
         "lifetime_spend_petfood",
-        "lifetime_spend_technology",
+        "lifetime_spend_electronics",
+        "lifetime_spend_videogames",
         "log_total_spend",
         "percentage_of_products_bought_promotion",
         "customer_age",

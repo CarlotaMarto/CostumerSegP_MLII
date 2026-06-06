@@ -9,24 +9,6 @@ from mlxtend.frequent_patterns import apriori, association_rules
 from mlxtend.preprocessing import TransactionEncoder
 
 
-PROJECT_PALETTE = [
-    "#B87540",
-    "#B2543D",
-    "#7E6A43",
-    "#A8B7BA",
-    "#D8C0B4",
-    "#C8AB8C",
-    "#5A3516",
-    "#B98F70",
-]
-MAIN_COLOR = "#B87540"
-ACCENT_COLOR = "#B2543D"
-NOTE_COLOR = "#7E6A43"
-SECONDARY_COLOR = "#A8B7BA"
-LIGHT_COLOR = "#F3EEE6"
-DARK_COLOR = "#5A3516"
-
-
 def build_onehot(transactions):
     """Encode a list of transaction item-lists as a boolean one-hot DataFrame."""
     te = TransactionEncoder()
@@ -36,20 +18,37 @@ def build_onehot(transactions):
 
 def mine_rules(
     transactions,
-    min_support=0.01,
-    min_confidence=0.20,
+    min_support=0.02,
+    min_confidence=0.30,
     min_lift=1.2,
 ):
-    """Run apriori on a list of transactions and return filtered association rules."""
-    onehot = build_onehot(transactions)
-    frequent = apriori(onehot, min_support=min_support, use_colnames=True)
-    if frequent.empty:
-        return pd.DataFrame(), pd.DataFrame()
+    """Run apriori on a list of transactions and return filtered association rules.
 
-    rules = association_rules(frequent, metric="confidence", min_threshold=min_confidence)
-    rules = rules[rules["lift"] >= min_lift].copy()
-    rules = rules.sort_values("lift", ascending=False).reset_index(drop=True)
-    return rules, frequent
+    Falls back to looser thresholds (support=0.01, confidence=0.20, lift>=1.0)
+    when fewer than 3 rules are found with the primary parameters.
+
+    Returns a DataFrame sorted by lift descending, or an empty DataFrame.
+    """
+    onehot = build_onehot(transactions)
+
+    for sup, conf, lift_th in [
+        (min_support, min_confidence, min_lift),
+        (0.01, 0.20, 1.0),
+    ]:
+        frequent = apriori(onehot, min_support=sup, use_colnames=True)
+        if frequent.empty:
+            continue
+        rules = association_rules(frequent, metric="confidence", min_threshold=conf)
+        rules = rules[rules["lift"] >= lift_th].copy()
+        rules = rules.sort_values("lift", ascending=False).reset_index(drop=True)
+        if len(rules) >= 3:
+            if sup != min_support:
+                warnings.warn(
+                    f"Relaxed thresholds used: support={sup}, confidence={conf}, lift>={lift_th}"
+                )
+            return rules, frequent
+
+    return pd.DataFrame(), pd.DataFrame()
 
 
 def mine_rules_per_segment(
@@ -89,63 +88,6 @@ def mine_rules_per_segment(
         all_rules[cluster_id] = rules
 
     return all_rules
-
-
-
-def rule_overlap_summary(all_rules, cluster_names, n=10):
-    """Summarise how distinct the top rules are across segments."""
-    rule_clusters = {}
-    consequent_clusters = {}
-    top_by_cluster = {}
-
-    for cluster_id, rules in all_rules.items():
-        top = rules.head(n).copy()
-        top_by_cluster[cluster_id] = top
-        for _, row in top.iterrows():
-            r_key = rule_key(row)
-            c_key = ", ".join(sorted(row["consequents"]))
-            rule_clusters.setdefault(r_key, set()).add(cluster_id)
-            consequent_clusters.setdefault(c_key, set()).add(cluster_id)
-
-    rows = []
-    for cluster_id, top in top_by_cluster.items():
-        if top.empty:
-            rows.append({
-                "cluster": cluster_id,
-                "segment": cluster_names.get(cluster_id, str(cluster_id)),
-                "top_rules_checked": 0,
-                "unique_consequents": 0,
-                "repeated_exact_rules": 0,
-                "repeated_consequents": 0,
-                "main_consequents": "",
-                "interpretation": "no rules available",
-            })
-            continue
-
-        rule_keys = top.apply(rule_key, axis=1)
-        consequent_keys = top["consequents"].apply(lambda x: ", ".join(sorted(x)))
-        repeated_rules = sum(len(rule_clusters[k]) > 1 for k in rule_keys)
-        repeated_cons = sum(len(consequent_clusters[k]) > 1 for k in consequent_keys)
-        main_cons = "; ".join(consequent_keys.value_counts().head(3).index.tolist())
-
-        if repeated_rules >= max(1, len(top) * 0.5):
-            interpretation = "mostly generic"
-        elif repeated_cons >= max(1, len(top) * 0.5):
-            interpretation = "shared product theme"
-        else:
-            interpretation = "more segment specific"
-
-        rows.append({
-            "cluster": cluster_id,
-            "segment": cluster_names.get(cluster_id, str(cluster_id)),
-            "top_rules_checked": len(top),
-            "unique_consequents": consequent_keys.nunique(),
-            "repeated_exact_rules": int(repeated_rules),
-            "repeated_consequents": int(repeated_cons),
-            "main_consequents": main_cons,
-            "interpretation": interpretation,
-        })
-    return pd.DataFrame(rows)
 
 
 def top_rules_table(all_rules, cluster_names, n=5):
@@ -237,28 +179,19 @@ def compare_train_test_rules(
     return pd.DataFrame(rows)
 
 
-def build_campaign_table(all_rules, cluster_names, n=3, excluded_recommendations=None, scan_limit=50):
-    """Build a campaign table, optionally skipping unsuitable recommendations."""
-    excluded_recommendations = excluded_recommendations or {}
+def build_campaign_table(all_rules, cluster_names, n=3):
+    """Build a campaign suggestion table from the top n rules per cluster."""
     rows = []
     for cluster_id, rules in all_rules.items():
-        blocked = {item.lower() for item in excluded_recommendations.get(cluster_id, [])}
-        selected = 0
-        for _, row in rules.head(scan_limit).iterrows():
-            consequents = sorted(row["consequents"])
-            if any(item.lower() in blocked for item in consequents):
-                continue
+        for _, row in rules.head(n).iterrows():
             rows.append({
                 "cluster": cluster_id,
                 "segment": cluster_names.get(cluster_id, str(cluster_id)),
                 "if_buys": ", ".join(sorted(row["antecedents"])),
-                "promote": ", ".join(consequents),
+                "promote": ", ".join(sorted(row["consequents"])),
                 "confidence": round(row["confidence"], 2),
                 "lift": round(row["lift"], 2),
             })
-            selected += 1
-            if selected >= n:
-                break
     return pd.DataFrame(rows)
 
 
@@ -278,7 +211,7 @@ def plot_rules_by_segment(all_rules, cluster_names, n=10):
             + " → "
             + top["consequents"].apply(lambda x: ", ".join(sorted(x)))
         )
-        axes[idx].barh(top["rule"][::-1], top["lift"][::-1], color=MAIN_COLOR)
+        axes[idx].barh(top["rule"][::-1], top["lift"][::-1], color="#B87540")
         axes[idx].set_title(f"Cluster {cluster_id}: {name}", fontsize=9)
         axes[idx].set_xlabel("Lift")
         axes[idx].tick_params(axis="y", labelsize=7)
@@ -303,63 +236,6 @@ def load_segment_transactions(data_dir, cluster_names=None):
     if cluster_names is not None:
         df["cluster_name"] = df["cluster"].map(cluster_names)
     return df
-
-
-def basket_coverage_by_segment(data_dir, cluster_names):
-    """Check how much of each segment is represented in the basket data."""
-    data_dir = str(data_dir)
-    basket = pd.read_csv(f"{data_dir}/customer_basket.csv")
-    segments = pd.read_csv(f"{data_dir}/customer_segments.csv")
-
-    basket_customers = basket["customer_id"].dropna().unique()
-    rows = []
-    for cluster_id in sorted(segments["cluster"].unique()):
-        segment_ids = segments.loc[segments["cluster"] == cluster_id, "customer_id"]
-        in_basket = segment_ids.isin(basket_customers)
-        rows.append({
-            "cluster": cluster_id,
-            "segment": cluster_names.get(cluster_id, str(cluster_id)),
-            "segment_customers": int(segment_ids.nunique()),
-            "customers_with_basket": int(in_basket.sum()),
-            "coverage_%": round(float(in_basket.mean() * 100), 2),
-            "transactions": int(basket[basket["customer_id"].isin(segment_ids)]["invoice_id"].nunique())
-            if "invoice_id" in basket.columns else int(basket["customer_id"].isin(segment_ids).sum()),
-        })
-
-    out = pd.DataFrame(rows)
-    print(f"Basket rows: {len(basket):,}")
-    print(f"Customers in final segmentation: {segments['customer_id'].nunique():,}")
-    print(f"Segmented customers with basket data: {segments['customer_id'].isin(basket_customers).sum():,}")
-    return out
-
-
-def basket_quality_summary(data_dir, top_n=15):
-    """Summarise basket uniqueness and the most common items."""
-    data_dir = str(data_dir)
-    basket = pd.read_csv(f"{data_dir}/customer_basket.csv")
-
-    summary = {
-        "basket_rows": len(basket),
-        "unique_invoices": basket["invoice_id"].nunique() if "invoice_id" in basket else None,
-        "duplicated_invoice_rows": int(basket["invoice_id"].duplicated().sum()) if "invoice_id" in basket else None,
-        "unique_customers": basket["customer_id"].nunique() if "customer_id" in basket else None,
-        "duplicated_invoice_customer_rows": int(basket[["invoice_id", "customer_id"]].duplicated().sum())
-        if {"invoice_id", "customer_id"}.issubset(basket.columns) else None,
-    }
-
-    items = basket["list_of_goods"].apply(ast.literal_eval).tolist()
-    onehot = build_onehot(items)
-    item_support = (
-        onehot.mean()
-        .sort_values(ascending=False)
-        .head(top_n)
-        .mul(100)
-        .round(2)
-        .rename_axis("item")
-        .reset_index(name="transaction_support_%")
-    )
-
-    return pd.DataFrame([summary]), item_support
 
 
 def transaction_overview(df):
