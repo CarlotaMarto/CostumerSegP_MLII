@@ -1,6 +1,7 @@
 """Utilities for association rule mining per customer segment."""
 
 import ast
+import random
 import warnings
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -145,23 +146,6 @@ def rule_overlap_summary(all_rules, cluster_names, n=10):
             "main_consequents": main_cons,
             "interpretation": interpretation,
         })
-    return pd.DataFrame(rows)
-
-
-def top_rules_table(all_rules, cluster_names, n=5):
-    """Return a tidy DataFrame of the top n rules per cluster."""
-    rows = []
-    for cluster_id, rules in all_rules.items():
-        for _, row in rules.head(n).iterrows():
-            rows.append({
-                "cluster": cluster_id,
-                "segment": cluster_names.get(cluster_id, str(cluster_id)),
-                "antecedents": ", ".join(sorted(row["antecedents"])),
-                "consequents": ", ".join(sorted(row["consequents"])),
-                "support": round(row["support"], 3),
-                "confidence": round(row["confidence"], 2),
-                "lift": round(row["lift"], 2),
-            })
     return pd.DataFrame(rows)
 
 
@@ -413,4 +397,103 @@ def export_campaign_table(campaigns, data_dir, filename="segment_campaign_rules.
     print(f"Saved {filename}")
     print(f"Total campaign suggestions: {len(campaigns)}")
     return output_path
+
+
+_CAMPAIGN_TEMPLATES = [
+    "Buy {antecedents} and get {discount}% off {consequents}!",
+    "Exclusive deal: purchase {antecedents} and receive {consequents} at {discount}% off.",
+    "Buy {antecedents} — get {consequents} for free when you spend above your usual basket!",
+    "This week only: {antecedents} + {consequents} together for just {bundle_pct}% of their combined price.",
+    "Love {antecedents}? You'll love {consequents} too — {discount}% off just for you.",
+]
+
+
+def _pick_template(lift, confidence, rng):
+    if lift >= 3.0:
+        return _CAMPAIGN_TEMPLATES[0]
+    if confidence >= 0.6:
+        return _CAMPAIGN_TEMPLATES[1]
+    return random.choice(_CAMPAIGN_TEMPLATES[2:])
+
+
+def _discount_from_lift(lift):
+    if lift >= 4.0:
+        return 30
+    if lift >= 3.0:
+        return 25
+    if lift >= 2.0:
+        return 20
+    return 15
+
+
+def format_campaign_creative(campaigns, cluster_names=None, random_state=42):
+    """Convert the campaign table into ready-to-use creative campaign texts with discount levels."""
+    random.seed(random_state)
+
+    out = campaigns.copy()
+
+    if cluster_names is not None:
+        out["segment"] = out["cluster"].map(cluster_names).fillna(out["segment"])
+
+    texts, discounts, rationales = [], [], []
+
+    for _, row in out.iterrows():
+        ant = row["if_buys"].title()
+        con = row["promote"].title()
+        lift = float(row["lift"])
+        conf = float(row["confidence"])
+        disc = _discount_from_lift(lift)
+        bundle_pct = round((1 - disc / 100) * 100)
+
+        template = _pick_template(lift, conf, random)
+        text = template.format(
+            antecedents=ant,
+            consequents=con,
+            discount=disc,
+            bundle_pct=bundle_pct,
+        )
+        rationale = (
+            f"Rule lift {lift:.2f} — customers who buy {ant} are {lift:.1f}× more "
+            f"likely than average to also buy {con} "
+            f"(confidence {conf:.0%})."
+        )
+        texts.append(text)
+        discounts.append(disc)
+        rationales.append(rationale)
+
+    out["discount_%"] = discounts
+    out["campaign_text"] = texts
+    out["campaign_rationale"] = rationales
+    return out
+
+
+def print_campaign_report(creative_campaigns):
+    """Pretty-print the creative campaign report grouped by segment."""
+    for segment, group in creative_campaigns.groupby("segment"):
+        print(f"\n{'=' * 60}")
+        print(f"  Segment: {segment}")
+        print(f"{'=' * 60}")
+        for i, (_, row) in enumerate(group.iterrows(), 1):
+            print(f"\n  Campaign {i}:")
+            print(f"  ➤  {row['campaign_text']}")
+            print(f"     ({row['campaign_rationale']})")
+    print()
+
+
+def top_rule_per_segment(all_rules, cluster_names):
+    """Return a summary table with the single strongest rule (by lift) per segment."""
+    rows = []
+    for cluster_id, rules in all_rules.items():
+        if rules.empty:
+            continue
+        top = rules.nlargest(1, "lift").iloc[0]
+        rows.append({
+            "segment": cluster_names.get(cluster_id, str(cluster_id)),
+            "if_buys": ", ".join(sorted(top["antecedents"])),
+            "then_buys": ", ".join(sorted(top["consequents"])),
+            "support": round(top["support"], 3),
+            "confidence": round(top["confidence"], 3),
+            "lift": round(top["lift"], 3),
+        })
+    return pd.DataFrame(rows).set_index("segment")
 

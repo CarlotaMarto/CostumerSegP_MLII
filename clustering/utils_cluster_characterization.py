@@ -43,17 +43,6 @@ def sequential_cmap():
     )
 
 
-def diverging_cmap():
-    return LinearSegmentedColormap.from_list(
-        "project_diverging",
-        [ACCENT_COLOR, LIGHT_COLOR, SECONDARY_COLOR],
-    )
-
-
-def cluster_cmap():
-    return ListedColormap(CLUSTER_PALETTE)
-
-
 CLUSTER_NAMES = {
     0: "Loyalists",
     1: "Vegetarians",
@@ -156,7 +145,36 @@ def plot_scaled_profile(profile_df, title="Normalised segment comparison"):
 
 
 
-def plot_radar_profiles(profile_df, features=None, cluster_names=None, title="Segment radar profiles", max_cols=4):
+def _radar_labels(features):
+    """Shorten feature names for radar chart axes."""
+    subs = {
+        "lifetime_spend_": "",
+        "annual_spend_": "",
+        "percentage_of_products_bought_promotion": "promotion_%",
+        "log_total_spend": "log_spend",
+        "lifetime_total_distinct_products": "distinct_products",
+        "distinct_stores_visited": "stores_visited",
+    }
+    out = []
+    for f in features:
+        label = f
+        for old, new in subs.items():
+            label = label.replace(old, new)
+        out.append(label)
+    return out
+
+
+def plot_radar_profiles(
+    profile_df,
+    features=None,
+    cluster_names=None,
+    title="Segment radar profiles",
+    max_cols=4,
+):
+    """One radar chart per cluster (small multiples, min-max scaled)."""
+    if cluster_names is None:
+        cluster_names = CLUSTER_NAMES
+
     data = scaled_profile(profile_df)
     if features is None:
         features = list(data.columns)
@@ -165,7 +183,7 @@ def plot_radar_profiles(profile_df, features=None, cluster_names=None, title="Se
         return pd.DataFrame()
 
     plot_data = data[features]
-    labels = [f.replace("lifetime_spend_", "").replace("percentage_of_products_bought_promotion", "promotion") for f in features]
+    labels = _radar_labels(features)
     angles = np.linspace(0, 2 * np.pi, len(features), endpoint=False).tolist()
     angles += angles[:1]
 
@@ -187,7 +205,7 @@ def plot_radar_profiles(profile_df, features=None, cluster_names=None, title="Se
         label = cluster_names.get(cluster, f"Cluster {cluster}") if cluster_names else f"Cluster {cluster}"
         ax.plot(angles, values, color=color, linewidth=2)
         ax.fill(angles, values, color=color, alpha=0.25)
-        ax.set_title(label, pad=12, fontsize=11)
+        ax.set_title(label, pad=12, fontsize=11, fontweight="bold")
         ax.set_xticks(angles[:-1])
         ax.set_xticklabels(labels, fontsize=8)
         ax.set_yticks([0.25, 0.5, 0.75, 1.0])
@@ -197,7 +215,61 @@ def plot_radar_profiles(profile_df, features=None, cluster_names=None, title="Se
     for ax in axes[n_clusters:]:
         ax.axis("off")
 
-    fig.suptitle(title, y=1.02, fontsize=14)
+    fig.suptitle(title, y=1.02, fontsize=14, fontweight="bold")
+    plt.tight_layout()
+    plt.show()
+    return plot_data.round(2)
+
+
+def plot_radar_combined(
+    profile_df,
+    features=None,
+    cluster_names=None,
+    title="Segment comparison — radar chart",
+    alpha=0.15,
+    figsize=(8, 8),
+):
+    """All clusters overlaid on a single radar chart for direct comparison."""
+    if cluster_names is None:
+        cluster_names = CLUSTER_NAMES
+
+    data = scaled_profile(profile_df)
+    if features is None:
+        features = list(data.columns)
+    features = [f for f in features if f in data.columns]
+    if not features:
+        return pd.DataFrame()
+
+    plot_data = data[features]
+    labels = _radar_labels(features)
+    n = len(features)
+    angles = np.linspace(0, 2 * np.pi, n, endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=figsize, subplot_kw={"projection": "polar"})
+    ax.set_theta_offset(np.pi / 2)
+    ax.set_theta_direction(-1)
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(labels, fontsize=9)
+    ax.set_yticks([0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0.25", "0.50", "0.75", "1.00"], fontsize=8, color="grey")
+    ax.set_ylim(0, 1)
+    ax.set_title(title, pad=20, fontsize=13, fontweight="bold")
+
+    for pos, (cluster, row) in enumerate(plot_data.iterrows()):
+        values = row.tolist() + row.tolist()[:1]
+        color = CLUSTER_PALETTE[pos % len(CLUSTER_PALETTE)]
+        name = cluster_names.get(cluster, f"Cluster {cluster}") if cluster_names else f"Cluster {cluster}"
+        ax.plot(angles, values, color=color, linewidth=2, label=name)
+        ax.fill(angles, values, color=color, alpha=alpha)
+
+    ax.legend(
+        loc="upper right",
+        bbox_to_anchor=(1.3, 1.15),
+        fontsize=9,
+        title="Segment",
+        title_fontsize=9,
+    )
     plt.tight_layout()
     plt.show()
     return plot_data.round(2)
@@ -392,4 +464,151 @@ def plot_simple_profile_checks(df):
     )
     display(household_summary)
     return binary_summary, household_summary
+
+
+def plot_cluster_summary_card(
+    df,
+    cluster_id,
+    profile_df,
+    cluster_col="cluster",
+    cluster_names=None,
+    spend_features=None,
+    stat_features=None,
+    figsize=(14, 5),
+):
+    """Three-panel summary card for one cluster: spend radar, key differentiators, stats table."""
+    if cluster_names is None:
+        cluster_names = CLUSTER_NAMES
+
+    segment_name = cluster_names.get(cluster_id, f"Cluster {cluster_id}")
+    color = CLUSTER_PALETTE[int(cluster_id) % len(CLUSTER_PALETTE)]
+
+    if spend_features is None:
+        spend_features = [c for c in df.columns if c.startswith("annual_spend_")]
+        if not spend_features:
+            spend_features = [c for c in df.columns if c.startswith("lifetime_spend_")]
+
+    if stat_features is None:
+        stat_features = [c for c in [
+            "customer_age", "total_children", "education_level", "tenure",
+            "log_total_spend", "percentage_of_products_bought_promotion",
+            "distinct_stores_visited", "number_complaints",
+            "customer_loyalty_flag", "is_male",
+        ] if c in df.columns]
+
+    cluster_df = df[df[cluster_col] == cluster_id]
+    n_customers = len(cluster_df)
+    pct = n_customers / len(df) * 100
+
+    fig = plt.figure(figsize=figsize)
+    fig.suptitle(
+        f"Cluster {cluster_id}  ·  {segment_name}  "
+        f"({n_customers:,} customers, {pct:.1f}%)",
+        fontsize=13, fontweight="bold", x=0.5, y=1.01,
+    )
+
+    gs = fig.add_gridspec(1, 3, wspace=0.45)
+
+    ax_radar = fig.add_subplot(gs[0, 0], projection="polar")
+    spend_prof = profile_df.drop(index="OVERALL", errors="ignore")
+    avail_spend = [f for f in spend_features if f in spend_prof.columns]
+    if avail_spend:
+        scaled = pd.DataFrame(
+            MinMaxScaler().fit_transform(spend_prof[avail_spend].astype(float)),
+            index=spend_prof.index,
+            columns=avail_spend,
+        )
+        if cluster_id in scaled.index:
+            vals = scaled.loc[cluster_id, avail_spend].tolist()
+            labels = _radar_labels(avail_spend)
+            angles = np.linspace(0, 2 * np.pi, len(avail_spend), endpoint=False).tolist()
+            angles += angles[:1]
+            vals += vals[:1]
+            ax_radar.plot(angles, vals, color=color, linewidth=2)
+            ax_radar.fill(angles, vals, color=color, alpha=0.25)
+            ax_radar.set_xticks(angles[:-1])
+            ax_radar.set_xticklabels(labels, fontsize=7)
+            ax_radar.set_yticks([0.25, 0.5, 0.75, 1.0])
+            ax_radar.set_yticklabels(["", "", "", ""], fontsize=6)
+            ax_radar.set_ylim(0, 1)
+    ax_radar.set_title("Spend profile\n(scaled)", fontsize=9, pad=10)
+
+    ax_bar = fig.add_subplot(gs[0, 1])
+    if "OVERALL" in profile_df.index and cluster_id in profile_df.index:
+        overall = profile_df.loc["OVERALL"]
+        cluster_vals = profile_df.loc[cluster_id]
+        rel = ((cluster_vals - overall) / overall.replace(0, np.nan)).dropna()
+        rel = rel[rel.index.isin(stat_features)]
+        top_pos = rel.nlargest(5)
+        top_neg = rel.nsmallest(3)
+        top = pd.concat([top_pos, top_neg]).sort_values()
+        bar_colors = [ACCENT_COLOR if v < 0 else color for v in top.values]
+        short_labels = _radar_labels(top.index.tolist())
+        ax_bar.barh(short_labels, top.values * 100, color=bar_colors)
+        ax_bar.axvline(0, color="grey", linewidth=0.8, linestyle="--")
+        ax_bar.set_xlabel("Deviation from overall mean (%)", fontsize=8)
+        ax_bar.tick_params(axis="y", labelsize=8)
+        ax_bar.set_title("Key differentiators", fontsize=9)
+    else:
+        ax_bar.axis("off")
+
+    ax_txt = fig.add_subplot(gs[0, 2])
+    ax_txt.axis("off")
+
+    stat_labels = {
+        "customer_age": "Avg age",
+        "total_children": "Avg children",
+        "education_level": "Avg education (yrs)",
+        "tenure": "Avg tenure (yrs)",
+        "log_total_spend": "Avg log-spend",
+        "percentage_of_products_bought_promotion": "Promo purchase %",
+        "distinct_stores_visited": "Avg stores visited",
+        "number_complaints": "Avg complaints",
+        "customer_loyalty_flag": "Loyalty card %",
+        "is_male": "Male %",
+    }
+
+    lines = [f"{'Metric':<28}{'Value':>8}", "-" * 38]
+    for feat in stat_features:
+        if feat not in cluster_df.columns:
+            continue
+        val = cluster_df[feat].mean()
+        label = stat_labels.get(feat, feat)
+        if feat in ("customer_loyalty_flag", "is_male"):
+            lines.append(f"{label:<28}{val * 100:>7.1f}%")
+        elif feat == "percentage_of_products_bought_promotion":
+            lines.append(f"{label:<28}{val * 100:>7.1f}%")
+        else:
+            lines.append(f"{label:<28}{val:>8.2f}")
+
+    ax_txt.text(
+        0.05, 0.95, "\n".join(lines),
+        transform=ax_txt.transAxes,
+        fontsize=8, verticalalignment="top",
+        fontfamily="monospace",
+        bbox=dict(boxstyle="round,pad=0.5", facecolor=LIGHT_COLOR, alpha=0.7),
+    )
+    ax_txt.set_title("Segment statistics", fontsize=9)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def plot_all_cluster_cards(
+    df,
+    profile_df,
+    cluster_col="cluster",
+    cluster_names=None,
+    **kwargs,
+):
+    """Plot one summary card for every cluster in sorted order."""
+    if cluster_names is None:
+        cluster_names = CLUSTER_NAMES
+    for cid in sorted(df[cluster_col].unique()):
+        plot_cluster_summary_card(
+            df, cid, profile_df,
+            cluster_col=cluster_col,
+            cluster_names=cluster_names,
+            **kwargs,
+        )
 

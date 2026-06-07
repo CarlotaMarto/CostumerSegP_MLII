@@ -420,7 +420,6 @@ def engineer_clustering_features(
         out["lifetime_spend_technology"] = (
             out["lifetime_spend_electronics"] + out["lifetime_spend_videogames"]
         )
-        out = out.drop(columns=["lifetime_spend_electronics", "lifetime_spend_videogames"])
 
     spend = [c for c in out.columns if c.startswith(spend_prefix)]
     if spend:
@@ -908,7 +907,7 @@ def separate_outliers_and_impute_regular(
     return regular_df, outlier_df, outlier_summary
 
 def align_outlier_features(outlier_df, reference_df, current_year):
-    """Apply the final imputation and feature-engineering steps to the outlier set."""
+    """Apply the full post-split pipeline to outliers so columns match the regular dataset."""
     if outlier_df is None or len(outlier_df) == 0:
         return outlier_df
 
@@ -919,8 +918,35 @@ def align_outlier_features(outlier_df, reference_df, current_year):
     out = apply_knn_imputation(outlier_df, n_neighbors=5, exclude_cols=out_exclude)
     out = engineer_clustering_features(out, current_year, keep_absolute_spend=True)
 
+    # Mirror the add_annual_spend_features step applied to the regular dataset
+    if "tenure" in out.columns:
+        out = add_annual_spend_features(out, tenure_col="tenure", spend_prefix="lifetime_spend_")
+
+    # Mirror cast_nullable_int for integer columns
+    int_cols = [
+        c for c in [
+            "kids_home", "teens_home", "number_complaints",
+            "distinct_stores_visited", "lifetime_total_distinct_products",
+            "customer_loyalty_flag", "education_level", "is_male",
+        ]
+        if c in out.columns
+    ]
+    out = cast_nullable_int(out, int_cols)
+
+    # Align column order to reference
+    ref_cols = [c for c in reference_df.columns if c in out.columns]
+    extra_cols = [c for c in out.columns if c not in reference_df.columns]
+    out = out[ref_cols + extra_cols]
+
     same_cols = set(out.columns) == set(reference_df.columns)
+    missing_in_outlier = set(reference_df.columns) - set(out.columns)
+    extra_in_outlier = set(out.columns) - set(reference_df.columns)
+
     print("Outlier columns match regular columns:", same_cols)
+    if missing_in_outlier:
+        print("  Missing in outlier:", sorted(missing_in_outlier))
+    if extra_in_outlier:
+        print("  Extra in outlier  :", sorted(extra_in_outlier))
     print("Outlier dataset shape:", out.shape)
     return out
 
@@ -1246,6 +1272,50 @@ def export_capped_dataset(capped_df, output_dir="../datasets"):
     print(f"Capped dataset exported: {capped_df.shape}  →  {path}")
     print(f"Spend columns: {len(spend_cols)}  |  Total customers: {len(capped_df)}")
     return capped_df
+
+
+def add_annual_spend_features(df, tenure_col="tenure", spend_prefix="lifetime_spend_", min_tenure=1):
+    """Add annual spend columns derived by dividing each lifetime spend by tenure.
+
+    For each column matching ``spend_prefix``, a new column ``annual_spend_<category>``
+    is created as ``lifetime_spend_<category> / max(tenure, min_tenure)``.
+
+    Tenure is floored at ``min_tenure`` (default 1) so that customers in their first
+    year of activity do not produce divisions by zero or artificially inflated rates.
+    Customers with a missing tenure receive a missing annual spend (NaN), which is
+    handled by the imputation step downstream.
+
+    The original lifetime spend columns are kept alongside the new annual spend columns
+    so that the clustering notebook can evaluate both feature sets independently.
+
+    Parameters
+    ----------
+    df : DataFrame
+        Dataset that already contains ``tenure_col`` and the lifetime spend columns.
+    tenure_col : str
+        Name of the tenure column. Must be present in ``df``.
+    spend_prefix : str
+        Prefix identifying the lifetime spend columns.
+    min_tenure : int or float
+        Minimum value used as the denominator to prevent division by zero.
+
+    Returns
+    -------
+    DataFrame with the additional ``annual_spend_*`` columns appended.
+    """
+    out = df.copy()
+    spend_cols = [c for c in out.columns if c.startswith(spend_prefix)]
+    if tenure_col not in out.columns:
+        raise ValueError(
+            f"Column '{tenure_col}' not found. Run engineer_clustering_features first."
+        )
+    safe_tenure = out[tenure_col].clip(lower=min_tenure)
+    for col in spend_cols:
+        annual_col = col.replace(spend_prefix, "annual_spend_")
+        out[annual_col] = out[col] / safe_tenure
+    added = len(spend_cols)
+    print(f"Annual spend features added: {added}  (tenure floored at {min_tenure})")
+    return out
 
 
 def preprocessing_summary_table(raw_df, regular_df, outlier_df=None, exported_files=None):

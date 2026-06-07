@@ -4,7 +4,7 @@ cluster,segment,if_buys,promote,confidence,lift
 0,Loyalists,iphone 10,airpods,0.22,1.61
 1,Vegetarians,"cooking oil, tomato sauce",babies food,0.42,1.48
 1,Vegetarians,"fresh bread, milk",babies food,0.42,1.48
-1,Vegetarians,"babies food, pet food",chicken,0.23,1.47
+1,Vegetarians,"napkins, spaghetti",babies food,0.41,1.46
 2,Regulars,"airpods, energy drink",bluetooth headphones,0.37,3.72
 2,Regulars,"airpods, bluetooth headphones",energy drink,0.37,3.61
 2,Regulars,"bluetooth headphones, energy drink",airpods,0.55,3.31
@@ -18,8 +18,8 @@ cluster,segment,if_buys,promote,confidence,lift
 5,Families,"black tea, fresh bread",salt,0.22,1.56
 5,Families,"milk, oatmeal","cereals, eggs",0.22,1.5
 6,Economizers,"avocado, carrots","asparagus, salad",0.32,5.15
-6,Economizers,"avocado, salad","asparagus, carrots",0.3,5.12
 6,Economizers,"asparagus, carrots","avocado, salad",0.2,5.12
-7,Techies,bluetooth headphones,"airpods, energy drink",0.2,5.51
+6,Economizers,"avocado, salad","asparagus, carrots",0.3,5.12
 7,Techies,"airpods, energy drink",bluetooth headphones,0.37,5.51
+7,Techies,bluetooth headphones,"airpods, energy drink",0.2,5.51
 7,Techies,"bluetooth headphones, energy drink",airpods,0.63,5.09
