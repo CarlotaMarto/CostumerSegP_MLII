@@ -402,7 +402,7 @@ def export_campaign_table(campaigns, data_dir, filename="segment_campaign_rules.
 _CAMPAIGN_TEMPLATES = [
     "Buy {antecedents} and get {discount}% off {consequents}!",
     "Exclusive deal: purchase {antecedents} and receive {consequents} at {discount}% off.",
-    "Buy {antecedents} — get {consequents} for free when you spend above your usual basket!",
+    "Buy {antecedents} and get {discount}% off {consequents} on your next purchase.",
     "This week only: {antecedents} + {consequents} together for just {bundle_pct}% of their combined price.",
     "Love {antecedents}? You'll love {consequents} too — {discount}% off just for you.",
 ]

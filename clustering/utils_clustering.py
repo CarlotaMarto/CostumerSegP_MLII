@@ -713,13 +713,13 @@ def build_candidate_feature_sets(df):
     annual_no_groceries = [c for c in annual if c != "annual_spend_groceries"]
     shares_no_groceries = [c for c in df.columns if c.endswith("_share")
                            and not c.startswith("grocery")]
-    eng = [c for c in ["log_total_spend", "distinct_stores_visited",
-                       "percentage_of_products_bought_promotion", "tenure",
-                       "number_complaints", "lifetime_total_distinct_products"]
-           if c in df.columns]
-    demo = [c for c in ["customer_age", "education_level", "total_children"]
-            if c in df.columns]
-    promo = [c for c in ["percentage_of_products_bought_promotion"] if c in df.columns]
+    eng = [
+        "log_total_spend", "distinct_stores_visited",
+        "percentage_of_products_bought_promotion", "tenure",
+        "number_complaints", "lifetime_total_distinct_products",
+    ]
+    demo = ["total_children"]
+    promo = ["percentage_of_products_bought_promotion"]
     sets = {
         # ---- value-based: absolute lifetime spend ----
         "lifetime_spend": (abss, False),
@@ -1304,7 +1304,7 @@ def maybe_fit_dbscan(X, run=False, eps=0.9, min_samples=10):
 
 def build_som_features(df):
     """Default profiling variables used in the SOM diagnostic."""
-    return [c for c in [
+    return [
         "lifetime_spend_groceries",
         "lifetime_spend_vegetables",
         "lifetime_spend_meat",
@@ -1315,10 +1315,8 @@ def build_som_features(df):
         "lifetime_spend_technology",
         "percentage_of_products_bought_promotion",
         "total_children",
-        "customer_age",
-        "education_level",
         "number_complaints",
-    ] if c in df.columns]
+    ]
 
 
 def som_grid_search(
@@ -1432,17 +1430,15 @@ def assign_and_plot_som(df, som, X_som, feature_cols, grid=(12, 12)):
 
 def default_profile_columns(df):
     """Default behavioural and demographic columns used for profiling."""
-    return [c for c in [
+    return [
         "log_total_spend",
         "percentage_of_products_bought_promotion",
         "distinct_stores_visited",
         "lifetime_total_distinct_products",
-        "customer_age",
-        "education_level",
         "tenure",
         "total_children",
         "number_complaints",
-    ] if c in df.columns]
+    ]
 
 
 def plot_segment_separation(data, label_col="cluster"):
@@ -1451,14 +1447,13 @@ def plot_segment_separation(data, label_col="cluster"):
     profile = profile_clusters(data, label_col, cols)
     scaled = plot_cluster_mean_comparison(profile, title="Normalised cluster mean comparison")
     display(scaled)
-    box_cols = [c for c in [
+    box_cols = [
         "log_total_spend",
         "percentage_of_products_bought_promotion",
         "distinct_stores_visited",
-        "customer_age",
         "total_children",
         "number_complaints",
-    ] if c in data.columns]
+    ]
     plot_boxplot_grid(data, box_cols, label_col=label_col)
     return scaled
 
@@ -1678,9 +1673,8 @@ def compare_outlier_strategies(
 
     for label, df in [("Separation (regular only)", separation_df),
                       ("IQR capping (full dataset)", capped_df)]:
-        cols = [c for c in feature_cols if c in df.columns]
         scaler = get_scaler(scaler_name)
-        X = apply_feature_pipeline(df, cols, logabs, scaler, fit=True)
+        X = apply_feature_pipeline(df, feature_cols, logabs, scaler, fit=True)
         model = fit_kmeans(X, k, random_state=random_state)
         labels = model.labels_
         sil = silhouette_score(
@@ -1723,9 +1717,8 @@ def plot_strategy_umap_comparison(
         ("Separation (regular only)", separation_df),
         ("IQR capping (full dataset)", capped_df),
     ]):
-        cols = [c for c in feature_cols if c in df.columns]
         scaler = get_scaler(scaler_name)
-        X = apply_feature_pipeline(df, cols, logabs, scaler, fit=True)
+        X = apply_feature_pipeline(df, feature_cols, logabs, scaler, fit=True)
         model = fit_kmeans(X, k, random_state=random_state)
         labels = model.labels_
 

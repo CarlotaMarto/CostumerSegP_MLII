@@ -19,11 +19,11 @@ PROJECT_PALETTE = [
     "#B98F70",
 ]
 CLUSTER_PALETTE = [
-    "#B87540",  # 0 Loyalists
-    "#B2543D",  # 1 Vegetarians
-    "#7E6A43",  # 2 Regulars
+    "#B87540",  # 0 Vegetarians
+    "#B2543D",  # 1 Regulars
+    "#7E6A43",  # 2 Wellness
     "#78969B",  # 3 Promoters
-    "#D08F78",  # 4 Wellness
+    "#D08F78",  # 4 Loyalists
     "#2F7A6A",  # 5 Families
     "#5A3516",  # 6 Economizers
     "#9B7DB8",  # 7 Techies
@@ -44,14 +44,14 @@ def sequential_cmap():
 
 
 CLUSTER_NAMES = {
-    0: "Loyalists",
-    1: "Vegetarians",
-    2: "Regulars",
-    3: "Promoters",
-    4: "Wellness",
-    5: "Families",
-    6: "Economizers",
-    7: "Techies",
+    0: "Vegetarians",   # highest vegetable spend, lowest meat
+    1: "Regulars",      # moderate across all features
+    2: "Wellness",      # highest hygiene spend, high vegetables
+    3: "Promoters",     # highest promotion-purchase rate
+    4: "Loyalists",     # highest loyalty flag, highest groceries spend
+    5: "Families",      # highest children count, highest meat spend
+    6: "Economizers",   # fewest store visits, moderate spend
+    7: "Techies",       # highest electronics and videogame spend
 }
 
 def load_characterization_data(data_dir="../datasets"):
@@ -65,14 +65,10 @@ def load_characterization_data(data_dir="../datasets"):
     df = features.merge(segments, on="customer_id", how="inner")
 
     original = pd.read_csv(f"{data_dir}/customer_info.csv")
-    granular_cols = [
-        "customer_id",
-        "lifetime_spend_electronics",
-        "lifetime_spend_videogames",
-    ]
-    granular_cols = [c for c in granular_cols if c in original.columns]
-    if len(granular_cols) > 1:
-        df = df.merge(original[granular_cols], on="customer_id", how="left")
+    missing_granular = [c for c in ["lifetime_spend_electronics", "lifetime_spend_videogames"]
+                        if c not in df.columns and c in original.columns]
+    if missing_granular:
+        df = df.merge(original[["customer_id"] + missing_granular], on="customer_id", how="left")
 
     df["cluster_name"] = df["cluster"].map(CLUSTER_NAMES).fillna(df["cluster"].astype(str))
     return df
@@ -298,7 +294,6 @@ def plot_feature_bars(df, features, cluster_col="cluster", max_cols=3):
 
 def plot_binary_share_by_cluster(df, columns, cluster_col="cluster"):
     """Plot the percentage of customers with selected binary attributes by cluster."""
-    columns = [c for c in columns if c in df.columns]
     if not columns:
         return pd.DataFrame()
 
@@ -323,7 +318,6 @@ def plot_binary_share_by_cluster(df, columns, cluster_col="cluster"):
 
 def plot_mean_profile_bars(df, columns, cluster_col="cluster", title="Mean profile by cluster"):
     """Plot mean values of selected numeric attributes by cluster."""
-    columns = [c for c in columns if c in df.columns]
     if not columns:
         return pd.DataFrame()
 
@@ -407,24 +401,21 @@ def spend_columns(df):
 
 def behavioural_profile_columns(df):
     """Main behavioural and demographic variables used for interpretation."""
-    return [c for c in [
+    return [
         "log_total_spend",
         "percentage_of_products_bought_promotion",
         "distinct_stores_visited",
         "lifetime_total_distinct_products",
-        "customer_age",
-        "education_level",
         "tenure",
         "total_children",
         "number_complaints",
         "customer_loyalty_flag",
-        "is_male",
-    ] if c in df.columns]
+    ]
 
 
 def key_plot_columns(df):
     """Compact feature list for barplots and boxplots."""
-    return [c for c in [
+    return [
         "lifetime_spend_groceries",
         "lifetime_spend_vegetables",
         "lifetime_spend_alcohol_drinks",
@@ -436,20 +427,19 @@ def key_plot_columns(df):
         "lifetime_spend_videogames",
         "log_total_spend",
         "percentage_of_products_bought_promotion",
-        "customer_age",
         "total_children",
         "number_complaints",
-    ] if c in df.columns]
+    ]
 
 
 def binary_profile_columns(df):
     """Binary attributes used for simple segment checks."""
-    return [c for c in ["customer_loyalty_flag", "is_male"] if c in df.columns]
+    return ["customer_loyalty_flag"]
 
 
 def household_profile_columns(df):
     """Household and complaints variables used for simple segment checks."""
-    return [c for c in ["total_children", "number_complaints"] if c in df.columns]
+    return ["total_children", "number_complaints"]
 
 
 def plot_simple_profile_checks(df):
@@ -489,12 +479,11 @@ def plot_cluster_summary_card(
             spend_features = [c for c in df.columns if c.startswith("lifetime_spend_")]
 
     if stat_features is None:
-        stat_features = [c for c in [
-            "customer_age", "total_children", "education_level", "tenure",
-            "log_total_spend", "percentage_of_products_bought_promotion",
-            "distinct_stores_visited", "number_complaints",
-            "customer_loyalty_flag", "is_male",
-        ] if c in df.columns]
+        stat_features = [
+            "total_children", "tenure", "log_total_spend",
+            "percentage_of_products_bought_promotion", "distinct_stores_visited",
+            "number_complaints", "customer_loyalty_flag",
+        ]
 
     cluster_df = df[df[cluster_col] == cluster_id]
     n_customers = len(cluster_df)
@@ -556,16 +545,13 @@ def plot_cluster_summary_card(
     ax_txt.axis("off")
 
     stat_labels = {
-        "customer_age": "Avg age",
         "total_children": "Avg children",
-        "education_level": "Avg education (yrs)",
         "tenure": "Avg tenure (yrs)",
         "log_total_spend": "Avg log-spend",
         "percentage_of_products_bought_promotion": "Promo purchase %",
         "distinct_stores_visited": "Avg stores visited",
         "number_complaints": "Avg complaints",
         "customer_loyalty_flag": "Loyalty card %",
-        "is_male": "Male %",
     }
 
     lines = [f"{'Metric':<28}{'Value':>8}", "-" * 38]
@@ -574,7 +560,7 @@ def plot_cluster_summary_card(
             continue
         val = cluster_df[feat].mean()
         label = stat_labels.get(feat, feat)
-        if feat in ("customer_loyalty_flag", "is_male"):
+        if feat == "customer_loyalty_flag":
             lines.append(f"{label:<28}{val * 100:>7.1f}%")
         elif feat == "percentage_of_products_bought_promotion":
             lines.append(f"{label:<28}{val * 100:>7.1f}%")
