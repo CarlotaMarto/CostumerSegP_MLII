@@ -1,4 +1,4 @@
-"""Utility functions used in the EDA and preprocessing notebook."""
+# Utility functions used in the EDA and preprocessing notebook.
 
 
 import os
@@ -52,7 +52,7 @@ def cluster_cmap():
 
 
 def get_missing_percent(df):
-    """Return the percentage of missing values for each column."""
+    #Return the percentage of missing values for each column.
     missing_percent = (df.isnull().sum() / len(df)) * 100
 
     report = pd.DataFrame(
@@ -66,7 +66,7 @@ def get_missing_percent(df):
 
 
 def get_missing_report(df):
-    """Return a missing values report with count and percentage."""
+    #Return a missing values report with count and percentage.
     missing_count = df.isnull().sum()
     missing_percentage = (missing_count / len(df)) * 100
 
@@ -81,7 +81,7 @@ def get_missing_report(df):
 
 
 def get_invalid_years(df, year_col="year_first_transaction"):
-    """Return rows with transaction years greater than the current year."""
+    #Return rows with transaction years greater than the current year.
     current_year = datetime.now().year
 
     if year_col not in df.columns:
@@ -91,7 +91,7 @@ def get_invalid_years(df, year_col="year_first_transaction"):
 
 
 def get_education_info(row):
-    """Extract education level and a cleaned customer name."""
+    #Extract education level and a cleaned customer name.
     if pd.isna(row["customer_name"]):
         return pd.Series([12, ""])
 
@@ -111,7 +111,7 @@ def get_education_info(row):
 
 
 def surname_summary(df, name_col="customer_name", top_n=20):
-    """Summarise repeated surnames from the customer name column."""
+    #Summarise repeated surnames from the customer name column.
     names = df[name_col].dropna().astype(str).str.strip()
     surnames = names.str.split().str[-1].str.lower()
     counts = surnames.value_counts()
@@ -138,7 +138,7 @@ def surname_summary(df, name_col="customer_name", top_n=20):
 
 
 def surname_location_proxy(df, name_col="customer_name", decimals=4):
-    """Check repeated surnames at approximately the same location."""
+    #Check repeated surnames at approximately the same location.
     required = {name_col, "latitude", "longitude"}
     if not required.issubset(df.columns):
         missing = ", ".join(sorted(required - set(df.columns)))
@@ -164,7 +164,7 @@ def surname_location_proxy(df, name_col="customer_name", decimals=4):
 
 
 def apply_cyclic_transformation(df, col, max_val=24):
-    """Apply cyclic transformation to a numerical cyclic column."""
+    #Apply cyclic transformation to a numerical cyclic column.
     df_transformed = df.copy()
 
     if col not in df_transformed.columns:
@@ -189,7 +189,7 @@ def apply_cyclic_transformation(df, col, max_val=24):
 
 
 def apply_knn_imputation(df, n_neighbors=5, exclude_cols=None):
-    """Apply KNN imputation to numerical columns."""
+    #Apply KNN imputation to numerical columns.
     df_imputed = df.copy()
     exclude_cols = exclude_cols or []
     exclude_cols = [col for col in exclude_cols if col in df_imputed.columns]
@@ -229,7 +229,7 @@ def apply_knn_imputation(df, n_neighbors=5, exclude_cols=None):
 
 
 def validate_imputation(df_original, df_imputed, columns):
-    """Check whether imputation produced suspicious values."""
+    #Check whether imputation produced suspicious values.
     issues = []
     allowed_negative = {
         "longitude",
@@ -413,7 +413,7 @@ def engineer_clustering_features(
     spend_prefix="lifetime_spend_",
     keep_absolute_spend=True,
 ):
-    """Create the engineered variables used for clustering."""
+    #Create the engineered variables used for clustering.
     out = df.copy()
 
     if "year_first_transaction" in out.columns:
@@ -445,7 +445,7 @@ def engineer_clustering_features(
 
 
 def remove_semi_constant_features(df, threshold=0.99, exclude_cols=None):
-    """Remove columns where one value represents at least `threshold` of rows."""
+    #Remove columns where one value represents at least `threshold` of rows.
     exclude_cols = exclude_cols or []
     semi_constant_cols = []
 
@@ -472,7 +472,7 @@ def remove_semi_constant_features(df, threshold=0.99, exclude_cols=None):
 
 
 def get_high_correlations(df, threshold=0.7):
-    """Identify pairs of numerical variables with absolute correlation above threshold."""
+    #Identify pairs of numerical variables with absolute correlation above threshold.
     corr_matrix = df.select_dtypes(include=[np.number]).corr().abs()
 
     upper_triangle = corr_matrix.where(
@@ -496,7 +496,7 @@ def get_high_correlations(df, threshold=0.7):
 
 
 def build_clustering_features(df, exclude_cols=None):
-    """Return numeric clustering features after excluding selected columns."""
+    #Return numeric clustering features after excluding selected columns.
     exclude_cols = set(exclude_cols or [])
     cols = [
         c
@@ -507,7 +507,7 @@ def build_clustering_features(df, exclude_cols=None):
 
 
 def _scale_matrix(df, scaler, binary_cols=None, ordinal_cols=None):
-    """Scale continuous columns with `scaler`, standardise ordinals, keep binaries as 0/1."""
+    #Scale continuous columns with `scaler`, standardise ordinals, keep binaries as 0/1.
     binary_cols = [c for c in (binary_cols or []) if c in df.columns]
     ordinal_cols = [c for c in (ordinal_cols or []) if c in df.columns]
     cont_cols = [c for c in df.columns if c not in binary_cols + ordinal_cols]
@@ -535,7 +535,7 @@ def test_scalers_kmeans(
     k_values=(4, 5, 6, 7, 8),
     random_state=42,
 ):
-    """Compare scalers with KMeans over a range of k values."""
+    # Compare scalers with KMeans over a range of k values.
     features = build_clustering_features(df, exclude_cols=exclude_cols)
     if features.shape[1] == 0:
         raise ValueError("No numerical columns available for clustering.")
@@ -571,21 +571,21 @@ def test_scalers_kmeans(
 
 
 def set_plot_style(figsize=(10, 6)):
-    """Apply the visual style used across the preprocessing notebook."""
+    #Apply the visual style used across the preprocessing notebook.
     sns.set_theme(style="whitegrid", palette=PROJECT_PALETTE)
     sns.set_palette(PROJECT_PALETTE)
     plt.rcParams["figure.figsize"] = figsize
 
 
 def get_column_groups(df):
-    """Return numerical and categorical column names."""
+    #Return numerical and categorical column names.
     numerical_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
     categorical_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
     return numerical_cols, categorical_cols
 
 
 def plot_missing_percent(missing_df):
-    """Plot missing-value percentages by column."""
+    #Plot missing-value percentages by column.
     plt.figure(figsize=(10, 6))
     sns.barplot(x="Missing_Percent", y="Column", data=missing_df, color=MAIN_COLOR)
     plt.title("Missing Values Percentage by Column")
@@ -596,7 +596,7 @@ def plot_missing_percent(missing_df):
 
 
 def numeric_columns_for_eda(df, exclude_cols=None):
-    """Return numeric columns used in the univariate EDA plots."""
+    #Return numeric columns used in the univariate EDA plots.
     exclude_cols = set(exclude_cols or [])
     return [
         col for col in df.select_dtypes(include=np.number).columns
@@ -605,7 +605,7 @@ def numeric_columns_for_eda(df, exclude_cols=None):
 
 
 def plot_numeric_distributions(df, columns, color=MAIN_COLOR):
-    """Plot histograms for numerical variables."""
+    #Plot histograms for numerical variables.
     if not columns:
         print("No numerical columns available for plotting.")
         return
@@ -631,7 +631,7 @@ def plot_numeric_distributions(df, columns, color=MAIN_COLOR):
 
 
 def get_skewness_table(df, columns):
-    """Return skewness sorted by absolute magnitude."""
+    #Return skewness sorted by absolute magnitude.
     skewness_df = pd.DataFrame({
         "feature": columns,
         "skewness": [df[col].skew() for col in columns],
@@ -640,7 +640,7 @@ def get_skewness_table(df, columns):
 
 
 def plot_numeric_boxplots(df, columns):
-    """Plot boxplots for numerical variables."""
+    #Plot boxplots for numerical variables.
     if not columns:
         print("No numerical columns available for plotting.")
         return
@@ -664,7 +664,7 @@ def plot_numeric_boxplots(df, columns):
 
 
 def set_future_years_to_missing(df, current_year, year_col="year_first_transaction"):
-    """Set future transaction years to missing and keep all rows."""
+    #Set future transaction years to missing and keep all rows.
     out = df.copy()
     future_mask = out[year_col] > current_year
     out.loc[future_mask, year_col] = np.nan
@@ -672,7 +672,7 @@ def set_future_years_to_missing(df, current_year, year_col="year_first_transacti
 
 
 def set_invalid_promotion_to_missing(df, col="percentage_of_products_bought_promotion"):
-    """Set promotion percentages outside [0, 1] to missing."""
+    #Set promotion percentages outside [0, 1] to missing.
     out = df.copy()
     invalid_mask = (out[col] < 0.0) | (out[col] > 1.0)
     out.loc[invalid_mask, col] = np.nan
@@ -680,14 +680,14 @@ def set_invalid_promotion_to_missing(df, col="percentage_of_products_bought_prom
 
 
 def parse_birthdate(df, col="customer_birthdate"):
-    """Parse customer birthdate values using the source dataset format."""
+    #Parse customer birthdate values using the source dataset format.
     out = df.copy()
     out[col] = pd.to_datetime(out[col], format="%m/%d/%Y %I:%M %p", errors="coerce")
     return out
 
 
 def coerce_numeric_columns(df, columns):
-    """Convert selected columns to numeric values."""
+    #Convert selected columns to numeric values.
     out = df.copy()
     for col in columns:
         if col in out.columns:
@@ -696,7 +696,7 @@ def coerce_numeric_columns(df, columns):
 
 
 def plot_cyclic_hour(df):
-    """Plot the sine/cosine representation of the typical purchase hour."""
+    #Plot the sine/cosine representation of the typical purchase hour.
     plt.figure(figsize=(6, 6))
     plt.scatter(df["typical_hour_sin"], df["typical_hour_cos"], color=MAIN_COLOR, alpha=0.75)
     plt.title("Typical Hour Representation")
@@ -708,7 +708,7 @@ def plot_cyclic_hour(df):
 
 
 def fill_zero_count_columns(df, columns):
-    """Fill missing count columns where absence is interpreted as zero."""
+    #Fill missing count columns where absence is interpreted as zero.
     out = df.copy()
     for col in columns:
         if col in out.columns:
@@ -717,7 +717,7 @@ def fill_zero_count_columns(df, columns):
 
 
 def encode_loyalty_flag(df, source_col="loyalty_card_number", target_col="customer_loyalty_flag"):
-    """Convert loyalty-card numbers into a binary loyalty flag."""
+    #Convert loyalty-card numbers into a binary loyalty flag.
     out = df.copy()
     out.rename(columns={source_col: target_col}, inplace=True)
     out[target_col] = out[target_col].fillna(0).apply(lambda x: 1 if x != 0 else 0)
@@ -725,7 +725,7 @@ def encode_loyalty_flag(df, source_col="loyalty_card_number", target_col="custom
 
 
 def add_customer_age(df, current_date=None, birthdate_col="customer_birthdate"):
-    """Create customer_age and set implausible ages to missing."""
+    #Create customer_age and set implausible ages to missing.
     out = df.copy()
     current_date = current_date or pd.Timestamp.now().normalize()
     out["customer_age"] = (current_date - out[birthdate_col]).dt.days // 365
@@ -743,7 +743,7 @@ def add_customer_age(df, current_date=None, birthdate_col="customer_birthdate"):
 
 
 def plot_age_distribution(df):
-    """Plot the customer age distribution."""
+    #Plot the customer age distribution.
     plt.figure(figsize=(8, 4))
     sns.histplot(df["customer_age"], kde=True, color=MAIN_COLOR)
     plt.title("Customer Age Distribution")
@@ -752,14 +752,14 @@ def plot_age_distribution(df):
 
 
 def encode_gender(df, source_col="customer_gender", target_col="is_male"):
-    """Convert gender into a binary indicator and keep the original column for review."""
+    #Convert gender into a binary indicator and keep the original column for review.
     out = df.copy()
     out[target_col] = out[source_col].map({"male": 1, "female": 0})
     return out
 
 
 def cast_nullable_int(df, columns):
-    """Round selected columns and cast them to pandas nullable integers."""
+    #Round selected columns and cast them to pandas nullable integers.
     out = df.copy()
     for col in columns:
         if col in out.columns:
@@ -768,7 +768,7 @@ def cast_nullable_int(df, columns):
 
 
 def make_absolute_spend_view(df):
-    """Return the renamed absolute-spend feature view used for inspection."""
+    #Return the renamed absolute-spend feature view used for inspection.
     out = df.copy()
     rename_map = {
         "customer_age": "age",
@@ -805,7 +805,7 @@ def make_absolute_spend_view(df):
 
 
 def plot_outlier_diagnostics(df, columns, color=MAIN_COLOR):
-    """Plot boxplot and histogram diagnostics for selected columns."""
+    #Plot boxplot and histogram diagnostics for selected columns.
     columns = [col for col in columns if col in df.columns]
     if not columns:
         print("No columns available for outlier visualization.")
@@ -840,7 +840,7 @@ def plot_outlier_diagnostics(df, columns, color=MAIN_COLOR):
 
 
 def correlation_columns(df, exclude_cols=None):
-    """Return numeric columns to use in the correlation heatmap."""
+    #Return numeric columns to use in the correlation heatmap.
     exclude_cols = set(exclude_cols or [])
     return [
         col for col in df.select_dtypes(include=np.number).columns.tolist()
@@ -859,7 +859,7 @@ def separate_outliers_and_impute_regular(
     som_percentile=95,
     max_remove_pct=5.0,
 ):
-    """Separate raw outliers and impute the regular customer base."""
+    #Separate raw outliers and impute the regular customer base.
     out = df.copy()
     plot_missing_heatmap(out, "Missing Values Before Imputation")
     print(get_missing_report(out).to_string())
@@ -913,7 +913,7 @@ def separate_outliers_and_impute_regular(
     return regular_df, outlier_df, outlier_summary
 
 def align_outlier_features(outlier_df, reference_df, current_year):
-    """Apply the full post-split pipeline to outliers so columns match the regular dataset."""
+    #Apply the full post-split pipeline to outliers so columns match the regular dataset.
     if outlier_df is None or len(outlier_df) == 0:
         return outlier_df
 
@@ -958,7 +958,7 @@ def align_outlier_features(outlier_df, reference_df, current_year):
 
 
 def export_preprocessing_outputs(regular_df, outlier_df=None, output_dir="../datasets"):
-    """Export the unscaled regular and outlier datasets used by clustering."""
+    #Export the unscaled regular and outlier datasets used by clustering.
     os.makedirs(output_dir, exist_ok=True)
 
     regular_path = os.path.join(output_dir, "info_clustering_unscaled.csv")
@@ -977,7 +977,7 @@ def export_preprocessing_outputs(regular_df, outlier_df=None, output_dir="../dat
     print(list(regular_df.columns))
 
 def plot_missing_heatmap(df, title="Missing Values Heatmap"):
-    """Plot a heatmap showing the location of missing values in the dataset."""
+    #Plot a heatmap showing the location of missing values in the dataset.
     plt.figure(figsize=(10, 5))
     sns.heatmap(df.isnull(), cbar=False, yticklabels=False, cmap=sequential_cmap())
     plt.title(title)
@@ -986,7 +986,7 @@ def plot_missing_heatmap(df, title="Missing Values Heatmap"):
 
 
 def cor_heatmap(corr_matrix, color=MAIN_COLOR):
-    """Plot a triangular correlation heatmap."""
+    #Plot a triangular correlation heatmap.
     plt.figure(figsize=(20, 15))
 
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
@@ -1012,7 +1012,7 @@ def cor_heatmap(corr_matrix, color=MAIN_COLOR):
     plt.show()
 
 def find_density_hotspot(df, lat_col="latitude", lon_col="longitude", bins=50):
-    """Return the centre and count of the densest latitude/longitude grid cell."""
+    #Return the centre and count of the densest latitude/longitude grid cell.
     geo = df[[lat_col, lon_col]].dropna().copy()
     lat_bins = np.linspace(geo[lat_col].min(), geo[lat_col].max(), bins + 1)
     lon_bins = np.linspace(geo[lon_col].min(), geo[lon_col].max(), bins + 1)
@@ -1031,7 +1031,7 @@ def find_density_hotspot(df, lat_col="latitude", lon_col="longitude", bins=50):
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
-    """Calculate distance in kilometres between two coordinate pairs."""
+    #Calculate distance in kilometres between two coordinate pairs.
     radius = 6371
     lat1, lon1, lat2, lon2 = map(np.radians, [lat1, lon1, lat2, lon2])
     dlat = lat2 - lat1
@@ -1041,7 +1041,7 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 
 def landmark_distances(hotspot_lat, hotspot_lon, landmarks=None):
-    """Compare the hotspot location with relevant Lisbon landmarks."""
+    #Compare the hotspot location with relevant Lisbon landmarks.
     if landmarks is None:
         landmarks = pd.DataFrame({
             "place": ["Cidade Universitaria", "NOVA IMS Campolide", "Entrecampos", "Sete Rios"],
@@ -1058,7 +1058,7 @@ def landmark_distances(hotspot_lat, hotspot_lon, landmarks=None):
 
 
 def get_hotspot_customers(df, hotspot_lat, hotspot_lon, radius=0.006):
-    """Select customers in a small square around the hotspot centre."""
+    #Select customers in a small square around the hotspot centre.
     mask = (
         df["latitude"].between(hotspot_lat - radius, hotspot_lat + radius)
         & df["longitude"].between(hotspot_lon - radius, hotspot_lon + radius)
@@ -1067,7 +1067,7 @@ def get_hotspot_customers(df, hotspot_lat, hotspot_lon, radius=0.006):
 
 
 def compare_hotspot_profile(hotspot_df, outside_df, profile_cols):
-    """Compare average profile values inside and outside the hotspot."""
+    #Compare average profile values inside and outside the hotspot.
     profile_cols = [c for c in profile_cols if c in hotspot_df.columns and c in outside_df.columns]
     out = pd.DataFrame({
         "hotspot": hotspot_df[profile_cols].mean(),
@@ -1081,7 +1081,7 @@ def compare_hotspot_profile(hotspot_df, outside_df, profile_cols):
 
 
 def hotspot_age_tables(hotspot_df, outside_df, age_col="customer_age"):
-    """Return age summary and age-band distribution for the hotspot analysis."""
+    #Return age summary and age-band distribution for the hotspot analysis.
     age_bins = [0, 24, 34, 44, 54, 64, 200]
     age_labels = ["<=24", "25-34", "35-44", "45-54", "55-64", "65+"]
 
@@ -1101,7 +1101,7 @@ def hotspot_age_tables(hotspot_df, outside_df, age_col="customer_age"):
 
 
 def hotspot_segment_mix(hotspot_df, segments_path):
-    """Return the segment mix for hotspot customers when segment labels exist."""
+    #Return the segment mix for hotspot customers when segment labels exist.
     segments_path = os.fspath(segments_path)
     if not os.path.exists(segments_path):
         return None
@@ -1122,7 +1122,7 @@ def hotspot_segment_mix(hotspot_df, segments_path):
     )
 
 def plot_hotspot_comparison(hotspot_df, outside_df, cols, title="Hotspot vs outside profile"):
-    """Plot average values inside and outside the geographic hotspot."""
+    #Plot average values inside and outside the geographic hotspot.
     cols = [c for c in cols if c in hotspot_df.columns and c in outside_df.columns]
     if not cols:
         raise ValueError("None of the selected columns exist in both DataFrames.")
@@ -1146,7 +1146,7 @@ def plot_hotspot_comparison(hotspot_df, outside_df, cols, title="Hotspot vs outs
 
 
 def plot_hotspot_age_distribution(hotspot_df, outside_df, age_col="customer_age"):
-    """Plot age-band distribution inside and outside the hotspot."""
+    #Plot age-band distribution inside and outside the hotspot.
     _, age_distribution = hotspot_age_tables(hotspot_df, outside_df, age_col=age_col)
     plot_df = age_distribution.reset_index().rename(columns={"index": "age_band"})
     first_col = plot_df.columns[0]
@@ -1167,7 +1167,7 @@ def plot_hotspot_age_distribution(hotspot_df, outside_df, age_col="customer_age"
     plt.show()
 
 def categorical_summary(df, cols):
-    """Return counts and percentages for selected categorical or binary columns."""
+    #Return counts and percentages for selected categorical or binary columns.
     rows = []
     for col in [c for c in cols if c in df.columns]:
         counts = df[col].value_counts(dropna=False)
@@ -1183,7 +1183,7 @@ def categorical_summary(df, cols):
 
 
 def plot_categorical_summary(df, cols):
-    """Plot distributions for selected categorical or binary columns."""
+    #Plot distributions for selected categorical or binary columns.
     cols = [c for c in cols if c in df.columns]
     if not cols:
         raise ValueError("None of the selected columns exist in the DataFrame.")
@@ -1209,26 +1209,9 @@ def plot_categorical_summary(df, cols):
 
 
 def apply_iqr_capping(df, iqr_k=1.5, cols=None):
-    """Cap extreme values using IQR fences on the full dataset.
-
-    Applies upper-fence capping only (Q3 + iqr_k * IQR) for spend columns,
-    since negative spend is not meaningful. All other numeric columns receive
-    symmetric capping. Missing values are left unchanged.
-
-    Parameters
-    ----------
-    df : pd.DataFrame
-        Full dataset *before* any outlier removal or split.
-    iqr_k : float
-        IQR multiplier for the fence. 1.5 = standard fence; 3.0 = conservative.
-    cols : list[str] or None
-        Columns to cap. Defaults to all numeric columns.
-
-    Returns
-    -------
-    pd.DataFrame
-        Capped copy of the input dataframe.
-    """
+    # Cap extreme numeric values using IQR fences.
+    # Spend columns are capped only at the upper fence because negative spending is not meaningful.
+    # Other numeric columns are capped on both sides, and missing values are preserved.
     out = df.copy()
     numeric_cols = cols if cols is not None else out.select_dtypes(include="number").columns.tolist()
 
