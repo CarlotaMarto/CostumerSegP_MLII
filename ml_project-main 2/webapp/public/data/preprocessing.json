@@ -1,0 +1,48 @@
+{
+  "raw": {
+    "rows": 33038,
+    "columns": 24,
+    "missing_values": 20869,
+    "duplicates": 0
+  },
+  "clean": {
+    "rows": 33038,
+    "columns": 46,
+    "missing_values": 34377,
+    "duplicates": 0
+  },
+  "pipeline_steps": [
+    {
+      "name": "Data Type Handling",
+      "description": "Converted dates, extracted customer age, cleaned numeric types"
+    },
+    {
+      "name": "Duplicate Removal",
+      "description": "Eliminated duplicate rows from both datasets"
+    },
+    {
+      "name": "Impossible Values",
+      "description": "Filtered age (0-120), negative counts, invalid coordinates"
+    },
+    {
+      "name": "Missing Value Imputation",
+      "description": "KNN Imputation (k=7) for numeric columns, zero-fill for spend columns"
+    },
+    {
+      "name": "Outlier Detection",
+      "description": "DBSCAN-based multidimensional outlier removal"
+    },
+    {
+      "name": "Feature Engineering",
+      "description": "Percentage-based spending features, education level extraction, family features, cyclic hour encoding"
+    },
+    {
+      "name": "Basket Aggregation",
+      "description": "Parsed shopping lists, computed basket metrics per customer"
+    },
+    {
+      "name": "Dataset Merge",
+      "description": "Inner join of customer info and basket features on customer_id"
+    }
+  ]
+}

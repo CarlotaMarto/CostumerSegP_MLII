@@ -203,6 +203,12 @@ def apply_knn_imputation(df, n_neighbors=5, exclude_cols=None):
     if len(numeric_cols) == 0:
         return df_imputed
 
+    # Nullable integer columns (Int64 etc.) reject fractional imputed values.
+    # Cast them to float64 so KNN averages can be stored without error.
+    for col in numeric_cols:
+        if pd.api.types.is_extension_array_dtype(df_imputed[col].dtype):
+            df_imputed[col] = df_imputed[col].astype("float64")
+
     numeric_df = df_imputed[numeric_cols]
 
     scaler = StandardScaler()
@@ -1225,6 +1231,13 @@ def apply_iqr_capping(df, iqr_k=1.5, cols=None):
     """
     out = df.copy()
     numeric_cols = cols if cols is not None else out.select_dtypes(include="number").columns.tolist()
+
+    # Nullable integer columns (Int64 etc.) reject float clip bounds via .where() internally.
+    # Cast them to float64 so capping works without dtype errors.
+    for col in numeric_cols:
+        if col in out.columns and pd.api.types.is_extension_array_dtype(out[col].dtype):
+            out[col] = out[col].astype("float64")
+
     spend_cols = [c for c in numeric_cols if c.startswith("lifetime_spend_")]
     other_cols = [c for c in numeric_cols if c not in spend_cols]
 
@@ -1275,34 +1288,7 @@ def export_capped_dataset(capped_df, output_dir="../datasets"):
 
 
 def add_annual_spend_features(df, tenure_col="tenure", spend_prefix="lifetime_spend_", min_tenure=1):
-    """Add annual spend columns derived by dividing each lifetime spend by tenure.
-
-    For each column matching ``spend_prefix``, a new column ``annual_spend_<category>``
-    is created as ``lifetime_spend_<category> / max(tenure, min_tenure)``.
-
-    Tenure is floored at ``min_tenure`` (default 1) so that customers in their first
-    year of activity do not produce divisions by zero or artificially inflated rates.
-    Customers with a missing tenure receive a missing annual spend (NaN), which is
-    handled by the imputation step downstream.
-
-    The original lifetime spend columns are kept alongside the new annual spend columns
-    so that the clustering notebook can evaluate both feature sets independently.
-
-    Parameters
-    ----------
-    df : DataFrame
-        Dataset that already contains ``tenure_col`` and the lifetime spend columns.
-    tenure_col : str
-        Name of the tenure column. Must be present in ``df``.
-    spend_prefix : str
-        Prefix identifying the lifetime spend columns.
-    min_tenure : int or float
-        Minimum value used as the denominator to prevent division by zero.
-
-    Returns
-    -------
-    DataFrame with the additional ``annual_spend_*`` columns appended.
-    """
+    """Add annual spend columns derived by dividing each lifetime spend by tenure. """
     out = df.copy()
     spend_cols = [c for c in out.columns if c.startswith(spend_prefix)]
     if tenure_col not in out.columns:

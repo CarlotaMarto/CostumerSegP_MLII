@@ -1,0 +1,396 @@
+{
+  "total_customers": 33038,
+  "total_features": 46,
+  "columns": [
+    "customer_id",
+    "customer_name",
+    "customer_gender",
+    "customer_age",
+    "education_level",
+    "kids_home",
+    "teens_home",
+    "total_children",
+    "year_first_transaction",
+    "years_tenure",
+    "distinct_stores_visited",
+    "number_complaints",
+    "typical_hour",
+    "time_of_day",
+    "lifetime_total_distinct_products",
+    "percentage_of_products_bought_promotion",
+    "lifetime_spend_groceries",
+    "lifetime_spend_vegetables",
+    "lifetime_spend_meat",
+    "lifetime_spend_fish",
+    "lifetime_spend_meat_fish",
+    "lifetime_spend_electronics_videogames",
+    "lifetime_spend_electronics",
+    "lifetime_spend_videogames",
+    "lifetime_spend_nonalcohol_drinks",
+    "lifetime_spend_alcohol_drinks",
+    "lifetime_spend_hygiene",
+    "lifetime_spend_petfood",
+    "total_spend",
+    "perc_spend_vegetables",
+    "perc_spend_meat_fish",
+    "perc_spend_petfood",
+    "perc_spend_tech_entertainment",
+    "perc_spend_groceries",
+    "perc_spend_alcohol",
+    "perc_spend_hygiene",
+    "latitude",
+    "longitude",
+    "is_customer_outlier",
+    "total_trips",
+    "total_items_bought",
+    "average_basket_size",
+    "max_basket_size",
+    "min_basket_size",
+    "unique_products_bought",
+    "is_basket_outlier"
+  ],
+  "dtypes": {
+    "customer_id": "int64",
+    "customer_name": "object",
+    "customer_gender": "object",
+    "customer_age": "int64",
+    "education_level": "object",
+    "kids_home": "int64",
+    "teens_home": "int64",
+    "total_children": "int64",
+    "year_first_transaction": "int64",
+    "years_tenure": "int64",
+    "distinct_stores_visited": "int64",
+    "number_complaints": "int64",
+    "typical_hour": "int64",
+    "time_of_day": "object",
+    "lifetime_total_distinct_products": "int64",
+    "percentage_of_products_bought_promotion": "float64",
+    "lifetime_spend_groceries": "float64",
+    "lifetime_spend_vegetables": "float64",
+    "lifetime_spend_meat": "float64",
+    "lifetime_spend_fish": "float64",
+    "lifetime_spend_meat_fish": "float64",
+    "lifetime_spend_electronics_videogames": "float64",
+    "lifetime_spend_electronics": "float64",
+    "lifetime_spend_videogames": "float64",
+    "lifetime_spend_nonalcohol_drinks": "float64",
+    "lifetime_spend_alcohol_drinks": "float64",
+    "lifetime_spend_hygiene": "float64",
+    "lifetime_spend_petfood": "float64",
+    "total_spend": "float64",
+    "perc_spend_vegetables": "float64",
+    "perc_spend_meat_fish": "float64",
+    "perc_spend_petfood": "float64",
+    "perc_spend_tech_entertainment": "float64",
+    "perc_spend_groceries": "float64",
+    "perc_spend_alcohol": "float64",
+    "perc_spend_hygiene": "float64",
+    "latitude": "float64",
+    "longitude": "float64",
+    "is_customer_outlier": "int64",
+    "total_trips": "float64",
+    "total_items_bought": "float64",
+    "average_basket_size": "float64",
+    "max_basket_size": "float64",
+    "min_basket_size": "float64",
+    "unique_products_bought": "float64",
+    "is_basket_outlier": "float64"
+  },
+  "numeric_stats": {
+    "customer_id": {
+      "mean": 19974.27,
+      "median": 19951.5,
+      "std": 11538.54,
+      "min": 3.0,
+      "max": 40000.0
+    },
+    "customer_age": {
+      "mean": 55.1,
+      "median": 55.0,
+      "std": 18.04,
+      "min": 24.0,
+      "max": 86.0
+    },
+    "kids_home": {
+      "mean": 1.12,
+      "median": 1.0,
+      "std": 1.15,
+      "min": 0.0,
+      "max": 8.0
+    },
+    "teens_home": {
+      "mean": 0.9,
+      "median": 1.0,
+      "std": 0.96,
+      "min": 0.0,
+      "max": 6.0
+    },
+    "total_children": {
+      "mean": 2.02,
+      "median": 2.0,
+      "std": 1.78,
+      "min": 0.0,
+      "max": 14.0
+    },
+    "year_first_transaction": {
+      "mean": 2015.06,
+      "median": 2015.0,
+      "std": 4.59,
+      "min": 1993.0,
+      "max": 2026.0
+    },
+    "years_tenure": {
+      "mean": 10.94,
+      "median": 11.0,
+      "std": 4.59,
+      "min": 0.0,
+      "max": 33.0
+    },
+    "distinct_stores_visited": {
+      "mean": 3.17,
+      "median": 3.0,
+      "std": 1.67,
+      "min": 1.0,
+      "max": 10.0
+    },
+    "number_complaints": {
+      "mean": 0.93,
+      "median": 1.0,
+      "std": 0.89,
+      "min": 0.0,
+      "max": 7.0
+    },
+    "typical_hour": {
+      "mean": 12.67,
+      "median": 12.0,
+      "std": 4.82,
+      "min": 6.0,
+      "max": 23.0
+    },
+    "lifetime_total_distinct_products": {
+      "mean": 148.91,
+      "median": 123.0,
+      "std": 105.92,
+      "min": 0.0,
+      "max": 600.0
+    },
+    "percentage_of_products_bought_promotion": {
+      "mean": 0.32,
+      "median": 0.24,
+      "std": 0.27,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "lifetime_spend_groceries": {
+      "mean": 16306.23,
+      "median": 13002.5,
+      "std": 11985.9,
+      "min": 0.0,
+      "max": 104670.0
+    },
+    "lifetime_spend_vegetables": {
+      "mean": 712.67,
+      "median": 453.0,
+      "std": 656.0,
+      "min": 0.0,
+      "max": 3337.0
+    },
+    "lifetime_spend_meat": {
+      "mean": 709.24,
+      "median": 717.0,
+      "std": 488.79,
+      "min": 0.0,
+      "max": 3052.0
+    },
+    "lifetime_spend_fish": {
+      "mean": 590.52,
+      "median": 487.0,
+      "std": 500.45,
+      "min": 0.0,
+      "max": 3172.0
+    },
+    "lifetime_spend_meat_fish": {
+      "mean": 1299.76,
+      "median": 1228.0,
+      "std": 879.25,
+      "min": 0.0,
+      "max": 5136.0
+    },
+    "lifetime_spend_electronics_videogames": {
+      "mean": 3074.22,
+      "median": 1668.0,
+      "std": 3746.28,
+      "min": 0.0,
+      "max": 35984.0
+    },
+    "lifetime_spend_electronics": {
+      "mean": 2707.8,
+      "median": 1422.0,
+      "std": 3440.3,
+      "min": 0.0,
+      "max": 35299.0
+    },
+    "lifetime_spend_videogames": {
+      "mean": 366.42,
+      "median": 219.0,
+      "std": 459.14,
+      "min": 0.0,
+      "max": 3936.0
+    },
+    "lifetime_spend_nonalcohol_drinks": {
+      "mean": 464.35,
+      "median": 421.0,
+      "std": 275.77,
+      "min": 0.0,
+      "max": 2180.0
+    },
+    "lifetime_spend_alcohol_drinks": {
+      "mean": 615.93,
+      "median": 477.0,
+      "std": 518.85,
+      "min": 0.0,
+      "max": 3704.0
+    },
+    "lifetime_spend_hygiene": {
+      "mean": 812.15,
+      "median": 679.0,
+      "std": 610.74,
+      "min": 0.0,
+      "max": 3482.0
+    },
+    "lifetime_spend_petfood": {
+      "mean": 329.49,
+      "median": 324.0,
+      "std": 165.46,
+      "min": 0.0,
+      "max": 1224.0
+    },
+    "total_spend": {
+      "mean": 23614.81,
+      "median": 20179.5,
+      "std": 13363.99,
+      "min": 2083.0,
+      "max": 116366.0
+    },
+    "perc_spend_vegetables": {
+      "mean": 0.04,
+      "median": 0.02,
+      "std": 0.05,
+      "min": 0.0,
+      "max": 0.55
+    },
+    "perc_spend_meat_fish": {
+      "mean": 0.06,
+      "median": 0.06,
+      "std": 0.05,
+      "min": 0.0,
+      "max": 0.65
+    },
+    "perc_spend_petfood": {
+      "mean": 0.02,
+      "median": 0.01,
+      "std": 0.01,
+      "min": 0.0,
+      "max": 0.24
+    },
+    "perc_spend_tech_entertainment": {
+      "mean": 0.13,
+      "median": 0.09,
+      "std": 0.14,
+      "min": 0.0,
+      "max": 0.86
+    },
+    "perc_spend_groceries": {
+      "mean": 0.65,
+      "median": 0.7,
+      "std": 0.19,
+      "min": 0.0,
+      "max": 0.95
+    },
+    "perc_spend_alcohol": {
+      "mean": 0.03,
+      "median": 0.02,
+      "std": 0.03,
+      "min": 0.0,
+      "max": 0.45
+    },
+    "perc_spend_hygiene": {
+      "mean": 0.04,
+      "median": 0.03,
+      "std": 0.04,
+      "min": 0.0,
+      "max": 0.45
+    },
+    "latitude": {
+      "mean": 38.75,
+      "median": 38.75,
+      "std": 0.02,
+      "min": 38.69,
+      "max": 38.82
+    },
+    "longitude": {
+      "mean": -9.15,
+      "median": -9.16,
+      "std": 0.03,
+      "min": -9.23,
+      "max": -9.04
+    },
+    "is_customer_outlier": {
+      "mean": 0.0,
+      "median": 0.0,
+      "std": 0.03,
+      "min": 0.0,
+      "max": 1.0
+    },
+    "total_trips": {
+      "mean": 3.56,
+      "median": 3.0,
+      "std": 2.77,
+      "min": 1.0,
+      "max": 33.0
+    },
+    "total_items_bought": {
+      "mean": 33.42,
+      "median": 26.0,
+      "std": 27.4,
+      "min": 2.0,
+      "max": 324.0
+    },
+    "average_basket_size": {
+      "mean": 9.37,
+      "median": 9.33,
+      "std": 2.63,
+      "min": 2.0,
+      "max": 18.0
+    },
+    "max_basket_size": {
+      "mean": 12.12,
+      "median": 13.0,
+      "std": 3.48,
+      "min": 2.0,
+      "max": 18.0
+    },
+    "min_basket_size": {
+      "mean": 6.62,
+      "median": 6.0,
+      "std": 3.4,
+      "min": 1.0,
+      "max": 18.0
+    },
+    "unique_products_bought": {
+      "mean": 27.91,
+      "median": 24.0,
+      "std": 19.14,
+      "min": 2.0,
+      "max": 145.0
+    },
+    "is_basket_outlier": {
+      "mean": 0.0,
+      "median": 0.0,
+      "std": 0.01,
+      "min": 0.0,
+      "max": 1.0
+    }
+  }
+}

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node / Webapp
+webapp/node_modules/
+node_modules/
+
+# Vite
+webapp/node_modules/.vite/
+.vite/
+
+# Environment files
+.env
+.venv/
+venv/
+
+# OS files
+.DS_Store
+Thumbs.db
