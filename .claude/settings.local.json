@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(git -C /Users/franciscateixeira/Documents/ML/CostumerSegP_MLII status --short)",
-      "Bash(python3 -c ' *)",
-      "Bash(jupyter nbconvert *)"
-    ]
-  }
-}
