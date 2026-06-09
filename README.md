@@ -12,7 +12,7 @@ This project applies unsupervised machine learning to segment a retail customer 
 
 ## Interactive Report & Demo
 
-👉 **[Launch the Streamlit App](https://costumersegappcm-pcv5zjyel6ref4vshysqtr.streamlit.app/)**
+ **[Launch the Streamlit App](https://costumersegappcm-pcv5zjyel6ref4vshysqtr.streamlit.app/)**
 
 The app is the primary deliverable of this project. It presents the full segmentation pipeline interactively, including cluster profiles, exploratory analysis, and targeted promotion suggestions per segment.
 
