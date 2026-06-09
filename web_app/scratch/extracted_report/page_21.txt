@@ -1,0 +1,2 @@
+21 
+ Figure 16 — Note/diagram explaining how the notebook treats the choice of k (the search range and the criteria used to compare candidates). 

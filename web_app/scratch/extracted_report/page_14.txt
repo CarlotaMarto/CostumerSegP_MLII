@@ -1,0 +1,2 @@
+14 
+ Figure 9 — Boxplots of the main spend variables after cleaning and outlier separation, used as a final visual check of the “regular” customer base. 

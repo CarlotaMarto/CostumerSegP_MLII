@@ -1,0 +1,4 @@
+1 
+ Customer Segmentation Project A Detailed Review of the Machine Learning II Segmentation Pipeline 
+Independent project assessment — every notebook, every chart, explained 
+Prepared for:  Course: Machine Learning II — Customer Segmentation Report date: 7 June 2026   

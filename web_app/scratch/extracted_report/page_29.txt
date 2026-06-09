@@ -1,0 +1,4 @@
+29 
+regions, which is reassuring corroboration that the KMeans geometry is not an artefact of the algorithm's well-known preference for round, similarly-sized clusters. Figure 26 then quantifies this with an R²-style between-cluster variance metric across the different hierarchical linkage criteria and the KMeans solution: KMeans comes out at or near the top of this comparison, giving a second, independent line of evidence (beyond the silhouette search) that k = 8 with this feature space is a strong choice and not merely a local optimum of one particular algorithm. 6.10 Diagnosing and explaining the small clusters 
+ Figure 27a — Diagnostic view of the smaller clusters in the KMeans solution (size / composition). 
+ Figure 27b — Continuation: feature profile of the small clusters. 

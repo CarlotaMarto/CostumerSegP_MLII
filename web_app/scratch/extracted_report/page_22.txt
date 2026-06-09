@@ -1,0 +1,3 @@
+22 
+ Figure 17 — Grid of validation panels (silhouette plots and/or score curves) produced while fitting and comparing candidate values of k. 
+ Figure 18 — Annotated guide to reading the silhouette validation panels (what a “good” cluster's silhouette profile looks like vs. a “weak” one). This trio of figures documents the most important single decision in the notebook — the choice of k = 8 — and does so transparently. Figure 16 sets out the search philosophy: rather than mechanically picking the k with the single highest silhouette (which on real data is frequently a small, almost trivial split), the notebook searches a sensible range and weighs average silhouette against interpretability and balance of segment sizes. Figure 17 is the evidentiary core — a grid 

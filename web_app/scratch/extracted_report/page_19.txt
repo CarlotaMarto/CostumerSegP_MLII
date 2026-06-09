@@ -1,0 +1,4 @@
+19 
+ Figure 14 — Ward-linkage dendrogram computed on a representative sample of the customer base. 
+ Figure 15a — Complete-linkage dendrogram (sampled). 
+ Figure 15b — Average-linkage dendrogram (sampled). 

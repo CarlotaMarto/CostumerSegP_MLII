@@ -1,0 +1,18 @@
+48 
+Segment Size (Fig. 41) Defining behaviour (verified from each card's “Key differentiators” bars) How it should be read commercially complaints (−38%) and tenure (−13%), with an otherwise unremarkable spend profile (log-spend 9.82, 3.57 stores visited, 58.7% loyalty); a “low-friction, low-promo” signature rather than a high-spend one 
+— better suited to relationship/retention messaging than to promotion-led campaigns 
+Promoters 4,290 (13.0%) 
+The single most extreme differentiator recorded anywhere in the segmentation: promotion_% is +145% above the mean (an average of 86.4% of all purchases made on promotion), alongside smaller increases in stores visited (≈+15%) and complaints (≈+12%) and a −25% deviation on total_children 
+The unmistakable, least-ambiguous “deal-seeker” persona of the eight — price-led campaigns and promo-stacking should be aimed here first 
+Loyalists 3,527 (10.7%) 
+Above average on every engagement metric simultaneously: loyalty-card flag +28% (76.8% adoption — the highest of any segment), stores visited +24%, tenure +22% (13.6 years — also the highest), promotion_% +40% and complaints +21% 
+The clearest high-lifetime-value audience — protect and reward rather than discount; ideal for VIP, early-access and anniversary-style campaigns 
+Families 3,594 (10.9%) 
+Dominated by a single, extreme outlier trait: total_children is +175% above the mean (an average of 5.41 children per household versus roughly 1.5–2 elsewhere) — the single largest deviation recorded for any feature in any segment — alongside +17% tenure, +10% loyalty flag and −38% promotion_% 
+A genuine household/family niche that is already loyal without needing promotions — bulk-purchase, family-bundle and convenience offers will resonate better than price-led incentives 
+Economizers 6,319 (19.1%) 
+The largest of the eight segments (nearly a fifth of the base). Counter-intuitively, its sharpest differentiator is markedly below-average promotion_% (−53%, its single largest deviation), alongside modestly below-average total_children, stores visited and complaints (each roughly −18% to −20%); spend and tenure otherwise sit close to the population average (log-spend 10.0, tenure 12.1 yrs, loyalty 62.5%) 
+Despite the name, this is NOT a deal-chasing audience — it is defined by restrained, low-friction spending rather than promotion-seeking. Broad, always-on value messaging is likely to land better here than aggressive promo-stacking (this also explains the narrative mismatch in its campaign rules flagged in Section 8.5) 
+Techies 3,211 (9.7%) 
+The smallest segment, and the one with the most negative profile overall: total_children −68% (its largest single deviation; an average of just 0.64 children), stores visited −50%, promotion_% −28%, loyalty-card flag −20% and tenure −18%, offset only by slightly above-average complaints (+18%) and log-spend 
+A compact, low-touch, smaller-household niche; the strong electronics/audio co-purchase pattern surfaced in Section 8.4 nonetheless gives it the cleanest, most on-brand campaign story of the eight 

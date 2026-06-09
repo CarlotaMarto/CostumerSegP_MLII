@@ -1,0 +1,4 @@
+27 
+6.9 Independent benchmark: comparing KMeans against four alternative methods 
+ Figure 24 — Overview / setup of the independent method-comparison search (KMeans vs. hierarchical, DBSCAN, SOM and a two-stage benchmark). 
+ Figure 25a — UMAP comparison of the KMeans solution against a Ward-hierarchical solution computed on the same representative sample. 

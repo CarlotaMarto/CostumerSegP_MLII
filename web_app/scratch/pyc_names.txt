@@ -1,0 +1,15 @@
+Code block: <module>
+  Names: ['streamlit', 'st', 'pandas', 'pd', 'altair', 'alt', 'plotly.express', 'express', 'px', 'base64', 'pathlib', 'Path', '__file__', 'resolve', 'parent', 'BASE_DIR', 'IMAGENS_DIR', 'load_image_as_base64', 'INITIAL_BG_URI', 'SEG_IMG_URI', 'GROCERY_BASKET_URI', 'PRODUCT_GRID_URI', 'BASKET_PERSON_EMPTY_URI', 'LAPTOP_URI', 'PHONE_URI', 'HEADPHONES_URI', 'WATCH_URI', 'CAMERA_URI', 'TABLET_URI', 'ICON_INTRO_URI', 'ICON_ANALYSIS_URI', 'ICON_PREPROCESS_URI', 'ICON_GEOGRAPHY_URI', 'ICON_CLUSTERING_URI', 'BRAND_ICON_URI', 'range', 'SYMBOL_URIS', 'set_page_config', 'query_params', 'get', 'page', 'replace', 'css', 'markdown', 'sidebar', 'time', 'str', 'js_script', 'render_footer', 'read_csv', 'customer_info', 'customer_basket', 'len', 'total_customers', 'total_invoices', 'mean', 'avg_promo', 'median', 'median_products', 'columns', 'col1', 'col2', 'col3', 'col4', 'metric', 'subheader', 'c1', 'c2', 'isnull', 'reset_index', 'missing_pct', 'sort_values', 'Chart', 'mark_bar', 'encode', 'X', 'Y', 'Tooltip', 'properties', 'missing_chart', 'value_counts', 'gender_counts', 'gender_chart', 'altair_chart', 'startswith', 'spend_cols', 'spend_categories', 'title', 'Color', 'Scale', 'spend_chart', 'to_datetime', 'dt', 'year', 'dropna', 'copy', 'customer_clean', 'Bin', 'age_chart', 'numpy', 'np', 'sin', 'pi', 'cos', 'sample', 'min', 'hour_sample', 'mark_circle', 'cyclical_chart', 'mark_boxplot', 'box_chart', 'fillna', 'scatter_mapbox', 'scatter_map', 'update_layout', 'plotly_chart', 'density_mapbox', 'density_map', 'seg_summary', 'seg_meta', 'cards_list_html', 'iterrows', 'idx', 'row', 'int', 'c_id', 'share', 'custs', 'meta', 'symbol_uri', 'append', 'join', 'cards_html', 'Exception', 'e', 'info', 'seg_spend', 'seg_complaints', 'to_numeric', 'cluster_options', 'selectbox', 'list', 'keys', 'selected_cluster', 'row_summary', 'row_spend', 'row_complaints', 'empty', 'iloc', 'cust_count', 'cust_share', 'num_complaints', 'c3', 'spend_vals', 'spend_labels', 'DataFrame', 'spend_df', 'spend_chart_cluster', 'sys', 'print', 'stderr', 'campaign_rules', 'unique', 'unique_segments', 'selected_segment', 'segment_rules', 'rule', 'if_buys', 'promote', 'conf', 'lift', 'upper']
+  Varnames: ['i', 'c', 'col']
+  Code block: load_image_as_base64
+    Names: ['exists', 'open', 'base64', 'b64encode', 'read', 'decode', 'suffix', 'lower']
+    Varnames: ['path', 'img_file', 'data', 'ext']
+  Code block: render_footer
+    Names: ['st', 'markdown']
+    Varnames: []
+  Code block: render_footer
+    Names: ['st', 'markdown']
+    Varnames: []
+  Code block: <lambda>
+    Names: ['cluster_options']
+    Varnames: ['x']

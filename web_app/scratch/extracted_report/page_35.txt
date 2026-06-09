@@ -1,0 +1,4 @@
+35 
+Figure 31 — Check for a residual “petfood” signal inside the chosen (non-petfood) solution — does any of the eight segments still behave like pet owners on average? 
+ Figure 32a — Pairwise separation plots between segments on the most discriminating spend variables. 
+ Figure 32b — Continuation: further pairwise / multi-feature separation views. 

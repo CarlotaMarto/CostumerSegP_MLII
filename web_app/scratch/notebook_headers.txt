@@ -1,0 +1,205 @@
+================================================================================
+Notebook: NB0 - Data Analysis (preprocessing/00_data_analysis.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 0 — Data Analysis</h3>
+[1] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[2] <h2 style="color:#F3EEE6; margin:0;"><b>1. Imports and Data Loading</b></h2>
+[5] <h2 style="color:#F3EEE6; margin:0;"><b>1.1 Initial Data Analysis</b></h2>
+[12] <h2 style="color:#F3EEE6; margin:0;"><b>1.2 Duplicate Rows Analysis</b></h2>
+[17] <h2 style="color:#F3EEE6; margin:0;"><b>1.2.1 Surname Repetition Check</b></h2>
+[22] <h2 style="color:#F3EEE6; margin:0;"><b>1.3 Missing Values Analysis</b></h2>
+[32] <h2 style="color:#F3EEE6; margin:0;"><b>1.4 Numerical and Categorical Columns</b></h2>
+[35] <h2 style="color:#F3EEE6; margin:0;"><b>1.4.1 Findings in Categorical Columns</b></h2>
+[38] <h2 style="color:#F3EEE6; margin:0;"><b>1.5 Statistical Summary</b></h2>
+[45] #### **Spending Categories**
+[45] #### **Temporal & Behavioral Patterns**
+[49] <b>Data analysis conclusion.</b><br><br>
+
+
+
+================================================================================
+Notebook: NB1 - EDA & Preprocessing (preprocessing/01_eda_preprocessing.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 1 — Preprocessing</h3>
+[1] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[2] <h2 style="color:#F3EEE6; margin:0;"><b>1. Imports and Data Loading</b></h2>
+[7] <h2 style="color:#F3EEE6; margin:0;"><b>2. Data Cleaning</b></h2>
+[9] <h2 style="color:#F3EEE6; margin:0;"><b>2.1 Detecting Invalid Future Years</b></h2>
+[15] <h2 style="color:#F3EEE6; margin:0;"><b>2.2 Detecting Negative Values</b></h2>
+[17] ### Negative Value Analysis
+[18] <h2 style="color:#F3EEE6; margin:0;"><b>2.3 Fixing Negative Percentages</b></h2>
+[20] <h2 style="color:#F3EEE6; margin:0;"><b>2.4 Fixing Data Types</b></h2>
+[30] <h2 style="color:#F3EEE6; margin:0;"><b>2.5 Missing Values Treatment</b></h2>
+[36] <h2 style="color:#F3EEE6; margin:0;"><b>3. Aggregation Feature Engineering</b></h2>
+[42] * <b>Education level:</b> extracted safely from <code>customer_name</code> using regex, so customer names are not accide
+[42] * <b>Gender:</b> encoded as a binary flag, making it compatible with based on distance models.
+[42] * <b>Customer age:</b> calculated from birthdate and checked for unrealistic values before imputation.
+[42] * <b>Note on the education scale:</b> the year values (12 / 15 / 17 / 22) are an assumption about typical degree duratio
+[48] <h2 style="color:#F3EEE6; margin:0;"><b>4. Consensus Outlier Separation and KNN Imputation</b></h2>
+[50] * <b>IQR:</b> detects unusually high or low values in numerical variables.
+[50] * <b>DBSCAN:</b> identifies observations located in sparse areas of the feature space.
+[50] * <b>SOM:</b> highlights customers with high reconstruction error in a SOM map.
+[54] <h2 style="color:#F3EEE6; margin:0;"><b>5. Transformation Feature Engineering</b></h2>
+[57] ## Absolute spend feature set
+[61] <h2 style="color:#F3EEE6; margin:0;"><b>6. Outlier Diagnostics</b></h2>
+[66] <h2 style="color:#F3EEE6; margin:0;"><b>7. Multivariate Analysis: Feature Correlation</b></h2>
+[71] <h2 style="color:#F3EEE6; margin:0;"><b>8. Feature Selection and Final Export</b></h2>
+[72] ## Final clustering dataset
+[75] ## Export final files
+
+
+
+================================================================================
+Notebook: NB2 - Geographic Analysis (preprocessing/02_eda_geographic.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 2 — Geographic Customer Analysis</h3>
+[1] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[2] <h2 style="color:#F3EEE6; margin:0;"><b>1) Imports</b></h2>
+[4] <h2 style="color:#F3EEE6; margin:0;"><b>2) Data loading</b></h2>
+[7] <h2 style="color:#F3EEE6; margin:0;"><b>3) Basic geographic statistics</b></h2>
+[10] <h2 style="color:#F3EEE6; margin:0;"><b>4) Customer geographic distribution</b></h2>
+[13] ### Insights from Geospatial Mapping
+[15] <h2 style="color:#F3EEE6; margin:0;"><b>5) Customer density map</b></h2>
+[17] <h2 style="color:#F3EEE6; margin:0;"><b>6) Hotspot profile and area near the university check</b></h2>
+[30] <b>Does this make sense as a cluster?</b> At this stage, it should not be treated as one of the final customer segments 
+
+
+
+================================================================================
+Notebook: NB3 - Clustering (clustering/03_clustering.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 3 — Clustering Modelling and Validation</h3>
+[1] <b>Workflow overview.</b> This notebook develops the segmentation as a sequence of modelling decisions rather than as a 
+[2] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[3] <h2 style="color:#F3EEE6; margin:0;"><b>1) Imports and data loading</b></h2>
+[6] <b>Dataset reading decision.</b><br><br>
+[8] <h2 style="color:#F3EEE6; margin:0;"><b>2) Outlier strategy check - separation vs IQR capping</b></h2>
+[9] <b>Why the outlier check appears before the model search.</b><br><br>
+[10] <b>Why this comparison matters.</b><br><br>
+[10] — <b>Separation</b> keeps centroid positions clean and interpretable, but the reattachment of outliers to a nearest-neig
+[10] — <b>Capping</b> keeps all customers in the fit, but changes the actual spend values of extreme customers, which can blu
+[13] ### 2.1 - UMAP side by side
+[15] <b>Strategy selection.</b><br><br>
+[16] <h2 style="color:#F3EEE6; margin:0;"><b>3) Candidate feature sets and scalers</b></h2>
+[17] <b>Feature set principle.</b><br><br>
+[20] <h2 style="color:#F3EEE6; margin:0;"><b>4) Diagnostics A - scaler comparison, elbow and dendrograms</b></h2>
+[21] ### 4.1 - Scaler comparison (silhouette vs k)
+[24] <b>Scaler selection interpretation.</b><br><br>
+[25] <b>A note on groceries.</b> Groceries are kept in the dataset for profiling because they are behaviourally important. Ho
+[26] ### 4.2 - Inertia elbow
+[28] ### 4.3 - Ward dendrogram (on a sample)
+[31] <b>Ward dendrogram interpretation.</b><br><br>
+[32] ### 4.4 - Complete, average and single linkage dendrograms
+[34] <b>Linkage comparison interpretation.</b><br><br>
+[34] <b>Complete linkage</b> tends to form compact and conservative clusters because it merges groups according to their fart
+[34] <b>Average linkage</b> is less strict and merges clusters based on average distances between observations. It is useful 
+[34] <b>Single linkage</b> is the most sensitive to chaining effects, because clusters can be joined through narrow bridges o
+[35] <h2 style="color:#F3EEE6; margin:0;"><b>5) Diagnostics B - feature set and k silhouette grid</b></h2>
+[36] <b>How k is treated in this notebook.</b><br><br>
+[38] <b>Interpretation.</b> Higher silhouette values indicate more compact and separated clusters for each candidate feature 
+[39] <h2 style="color:#F3EEE6; margin:0;"><b>6) Model configuration</b></h2>
+[40] <b>Why a slightly lower metric can still be the better model.</b><br><br>
+[43] <b>Why the model is trained on the regular base.</b><br><br>
+[44] <b>Decision log.</b><br><br>
+[45] <h2 style="color:#F3EEE6; margin:0;"><b>7) Model fitting and validation</b></h2>
+[47] ### 7.1 - Silhouette plot
+[48] <b>How the validation plots are interpreted.</b><br><br>
+[50] ### 7.2 - PCA, UMAP and t-SNE projections
+[56] ### 7.3 - Current solution and petfood alternative
+[57] <b>Purpose of the alternative model.</b><br><br>
+[59] <b>How to read the candidate comparison.</b><br><br>
+[60] ### 7.4 - Petfood alternative validation plots
+[63] <b>Petfood alternative decision.</b><br><br>
+[65] <h2 style="color:#F3EEE6; margin:0;"><b>8) Method benchmarks</b></h2>
+[66] <b>Why benchmarks are not automatically selected.</b><br><br>
+[67] ### 8.0 - Independent method search
+[69] <b>Benchmark interpretation.</b><br><br>
+[71] ### 8.0.1 - UMAP comparison on the Ward sample
+[73] ### 8.1 - Ward, complete, average and single sample comparison
+[75] ### 8.1.1 - Benchmark label usage
+[76] ### 8.2 - Hierarchical R2 comparison
+[78] ### 8.3 - Hierarchical on KMeans centroids
+[78] This benchmark uses a two stage strategy. First, <b>20 KMeans small clusters</b> are created to summarise the detailed s
+[82] ### 8.4 - DBSCAN density benchmark
+[86] ### 8.5 - SOM Map feature map analysis
+[89] ### 8.5.1 - SOM interpretation
+[90] <h2 style="color:#F3EEE6; margin:0;"><b>9) Segment profiling</b></h2>
+[91] <b>From labels to business meaning.</b><br><br>
+[93] ### 9.1 - Petfood signal check in the current model
+[96] ### 9.2 - Segment separation plots
+[98] ### 9.3 - Complaint behaviour by segment
+[100] ### 9.4 - Geographic profiling
+[103] <b>Geographic interpretation.</b><br><br>
+[104] ### 9.5 - Numeric cluster labels
+[106] <h2 style="color:#F3EEE6; margin:0;"><b>10) Reattach outliers and export</b></h2>
+[110] <h2 style="color:#F3EEE6; margin:0;"><b>11) Final modelling conclusion</b></h2>
+
+
+
+================================================================================
+Notebook: NB4 - Cluster Characterisation (clustering/04_cluster_characterization.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 4 — Cluster Characterization</h3>
+[1] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[2] <h2 style="color:#F3EEE6; margin:0;"><b>1) Imports and data loading</b></h2>
+[3] <b>Characterization logic.</b><br><br>
+[5] <h2 style="color:#F3EEE6; margin:0;"><b>2) Segment sizes</b></h2>
+[7] <h2 style="color:#F3EEE6; margin:0;"><b>3) Spend profile</b></h2>
+[8] <b>Why absolute spend is still useful here.</b><br><br>
+[10] <h2 style="color:#F3EEE6; margin:0;"><b>4) Behavioural and demographic profile</b></h2>
+[12] <h2 style="color:#F3EEE6; margin:0;"><b>5) Loyalty, gender and household checks</b></h2>
+[14] <h2 style="color:#F3EEE6; margin:0;"><b>6) Normalised comparison</b></h2>
+[16] ### 6.1 - Radar profile summary
+[19] <h2 style="color:#F3EEE6; margin:0;"><b>7) Feature by feature plots</b></h2>
+[21] <h2 style="color:#F3EEE6; margin:0;"><b>8) Main differentiators by cluster</b></h2>
+[23] ### 6.2 - Cluster summary cards
+[25] <h2 style="color:#F3EEE6; margin:0;"><b>9) Cluster interpretation and naming rationale</b></h2>
+[26] <b>How the final names are chosen.</b><br><br>
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>0</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>1</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>2</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>3</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>4</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>5</b></td><td style="padding:8px
+[27] <tr style="border-bottom:1px solid rgba(216,192,180,0.35);"><td style="padding:8px;"><b>6</b></td><td style="padding:8px
+[27] <tr><td style="padding:8px;"><b>7</b></td><td style="padding:8px;"><b>Techies</b></td><td style="padding:8px;">Highest e
+[28] <b>Why there is no final Pets segment.</b><br><br>
+[29] <h2 style="color:#F3EEE6; margin:0;"><b>10) Geographic check</b></h2>
+[31] <h2 style="color:#F3EEE6; margin:0;"><b>11) Final segment names</b></h2>
+[33] <h2 style="color:#F3EEE6; margin:0;"><b>12) Export ID and cluster mapping</b></h2>
+[34] <b>Why the mapping is exported.</b><br><br>
+
+
+
+================================================================================
+Notebook: NB5 - Association Rules (clustering/05_association_rules.ipynb)
+================================================================================
+[0] <h1 style="color:#F3EEE6; margin-bottom:0;"><b>Machine Learning II — Customer Segmentation</b></h1>
+[0] <h3 style="color:#D8C0B4; margin-top:6px;">Notebook 5 — Association Rules per Segment</h3>
+[2] <h2 style="color:#F3EEE6; margin-top:0;"><b>Index</b></h2>
+[3] <h2 style="color:#F3EEE6; margin:0;"><b>1) Imports and data loading</b></h2>
+[4] <b>Why rules are mined after segmentation.</b><br><br>
+[12] <h2 style="color:#F3EEE6; margin:0;"><b>2) Transaction preparation per segment</b></h2>
+[14] <h2 style="color:#F3EEE6; margin:0;"><b>3) Apriori parameters</b></h2>
+[15] <b>Why the same thresholds are used across segments.</b><br><br>
+[16] The Apriori thresholds are fixed before interpreting the final rules. A minimum support of <b>1%</b> is used because rul
+[18] <h2 style="color:#F3EEE6; margin:0;"><b>4) Association rules per segment</b></h2>
+[20] <h2 style="color:#F3EEE6; margin:0;"><b>5) Top rules per segment</b></h2>
+[23] <b>Rule overlap check.</b><br><br>
+[25] <h2 style="color:#F3EEE6; margin:0;"><b>6) Rule robustness check</b></h2>
+[28] <b>How to read this table.</b><br><br>
+[29] <h2 style="color:#F3EEE6; margin:0;"><b>7) Campaign suggestions</b></h2>
+[30] <b>From rules to campaign ideas.</b><br><br>
+[32] <b>How to read the campaign table.</b><br><br>
+[34] <h2 style="color:#F3EEE6; margin:0;"><b>Narrative-consistency check — Economizers</b></h2>
+[35] <b>Why this segment is checked separately.</b><br><br>
+[35] Looking back at the campaign table above, all three rules selected for <b>Economizers</b> recommend the same small clust
+[37] ### 7.1 - Creative campaign texts
+[39] <h2 style="color:#F3EEE6; margin:0;"><b>8) Final interpretation</b></h2>
+
+

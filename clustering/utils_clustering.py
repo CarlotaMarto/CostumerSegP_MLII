@@ -1,8 +1,4 @@
-"""Utilities for the customer segmentation clustering workflow.
-
-This module centralises feature construction, scaling, clustering diagnostics,
-robustness checks and segment profiling used in the clustering notebook.
-"""
+"""Utilities for the customer segmentation clustering workflow."""
 
 import numpy as np
 import pandas as pd
@@ -451,6 +447,7 @@ def plot_profile_heatmap(profile_df, title="Cluster profile"):
     plt.ylabel("Cluster")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.25)
     plt.show()
 
 
@@ -639,7 +636,7 @@ def visualize_dimensionality_reduction(transformation, labels, title="Embedding"
     labels = np.asarray(labels).astype(int)
     transformation = np.asarray(transformation)
     unique_labels = np.unique(labels)
-    default_cmap = "tab10" if len(unique_labels) <= 10 else "tab20"
+    default_cmap = "Set1" if len(unique_labels) <= 9 else "tab20"
     cmap = plt.get_cmap(cmap_name or default_cmap, len(unique_labels))
 
     plt.figure(figsize=(9, 7))
@@ -649,7 +646,7 @@ def visualize_dimensionality_reduction(transformation, labels, title="Embedding"
             transformation[mask, 0],
             transformation[mask, 1],
             s=8,
-            alpha=0.65,
+            alpha=0.9,
             color=cmap(i),
             label=f"Cluster {label}",
         )
@@ -883,6 +880,7 @@ def plot_profile_heatmap_z(profile_df, title="Cluster profile (standardised per 
     plt.ylabel("Cluster")
     plt.xticks(rotation=45, ha="right")
     plt.tight_layout()
+    plt.subplots_adjust(bottom=0.25)
     plt.show()
     return z.round(2)
 
@@ -1595,31 +1593,6 @@ def compare_outlier_strategies(
     sample_size=10_000,
 ):
     """Compare clustering quality for two outlier handling strategies.
-
-    Parameters
-    ----------
-    separation_df : pd.DataFrame
-        Regular customers only (outliers already removed). The model is
-        fitted on this set; outliers are not reattached here — this function
-        focuses on clustering quality, not full coverage.
-    capped_df : pd.DataFrame
-        Full dataset with IQR-capped values (all customers included).
-    feature_cols : list[str]
-        Columns used for clustering distance.
-    k : int
-        Number of clusters.
-    scaler_name : str
-        Scaler to apply ('MinMax', 'Standard', 'Robust').
-    logabs : bool
-        Whether to apply log1p transform before scaling.
-    random_state : int
-    sample_size : int
-        Silhouette sample size.
-
-    Returns
-    -------
-    pd.DataFrame
-        One row per strategy with silhouette, balance and size metrics.
     """
     results = []
 

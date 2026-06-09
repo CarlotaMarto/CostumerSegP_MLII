@@ -1,0 +1,3 @@
+34 
+ Figure 30 — First pass at translating the eight numerical cluster labels into descriptive, business-facing groupings (the bridge into Notebook 4's naming work). Figure 30 marks the hand-off point between “we have eight statistically defensible groups” and “we can talk about these groups as people”. The notebook starts sketching, for each cluster id, the handful of features that most distinguish it from the population average — the same kind of deviation analysis that Notebook 4 will later formalise into full names, narratives and campaign-relevant profiles (see Section 7). 6.13 Final checks before sign-off: petfood signal, segment separation and geography 
+ 

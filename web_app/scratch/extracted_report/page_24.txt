@@ -1,0 +1,3 @@
+24 
+ Figure 20 — UMAP projection of the same solution. 
+ Figure 21 — t-SNE projection of the same solution. 

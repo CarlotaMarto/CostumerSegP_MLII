@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Customer Intelligence Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">Costumer Segmentation</span>
+        <span class="brand-text">Project</span>
+      </div>
+      <nav class="sidebar-nav">
+        <a class="nav-link active" href="#introduction"><span class="nav-icon"></span>Introduction</a>
+        <a class="nav-link" href="#data-analysis"><span class="nav-icon"></span>Data analysis</a>
+        <a class="nav-link" href="#data-preprocessing"><span class="nav-icon"></span>Data preprocessing</a>
+        <a class="nav-link" href="#data-geography"><span class="nav-icon"></span>Data In Geography</a>
+        <a class="nav-link" href="#communities"><span class="nav-icon"></span>Communities</a>
+        <a class="nav-link" href="#people"><span class="nav-icon"></span>People</a>
+        <a class="nav-link" href="#behaviors"><span class="nav-icon"></span>Behaviors</a>
+        <a class="nav-link" href="#opportunities"><span class="nav-icon"></span>Opportunities</a>
+        <a class="nav-link" href="#campaigns"><span class="nav-icon"></span>Campaigns</a>
+        <a class="nav-link" href="#signals"><span class="nav-icon"></span>Signals</a>
+        <a class="nav-link" href="#data-sources"><span class="nav-icon"></span>Data sources</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-chip">
+          <div class="avatar">A</div>
+          <div>
+            <div class="user-name">Administrator</div>
+            <div class="user-role">Dashboard</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header id="introduction" class="hero-card">
+        <div class="hero-copy">
+          <div class="eyebrow">Understand every customer. Grow with purpose.</div>
+          <h1>Customer segmentation insights for preprocessing and clean data.</h1>
+          <p>
+            This site highlights notebook-driven preprocessing insights for the customer information dataset.
+            It summarizes data cleaning, feature engineering, missing values handling, and anomaly detection.
+          </p>
+          <div class="hero-actions">
+            <a class="primary-btn" href="http://localhost:8501" target="_blank" rel="noopener noreferrer">Open app</a>
+            <button class="secondary-btn">View preprocessing</button>
+          </div>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="stat-value">34,060</span>
+            <span class="stat-label">customers analyzed</span>
+          </div>
+          <div class="hero-stat">
+            <span class="stat-value">7</span>
+            <span class="stat-label">communities discovered</span>
+          </div>
+          <div class="hero-art">
+            <div class="hero-figure">
+              <div class="circle large"></div>
+              <div class="circle small"></div>
+              <div class="shape shape-a"></div>
+              <div class="shape shape-b"></div>
+              <div class="shape shape-c"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <section id="data-analysis" class="analysis-panel">
+        <div class="panel-title">Data analysis</div>
+        <div class="data-copy">
+          <p>This section summarizes the raw dataset exploration: shape, data types, missing values, duplicates, categorical distributions and numeric skewness.</p>
+          <ul>
+            <li>Gráficos de distribuição mostram que as variáveis de gasto têm forte assimetria à direita.</li>
+            <li>O relatório de valores em falta identifica features com menos de 30% de ausência, mantendo a base de clientes.</li>
+            <li>A análise de duplicados e de repetição de apelidos valida a qualidade dos registros sem descartar sinais de cluster.</li>
+            <li>O principal insight é que os dados brutos requerem limpeza e categorização antes da modelagem.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="data-preprocessing" class="data-panel">
+        <div class="panel-title">Data preprocessing</div>
+        <div class="data-copy">
+          <p>This section summarizes the notebook preprocessing workflow: handling invalid dates and negative values, cleaning customer names, engineering customer features, and protecting the dataset for segmentation.</p>
+          <ul>
+            <li>Gráficos: plots de hora cíclica, distribuição de idade, resumos categóricos e boxplots de outliers.</li>
+            <li>Transformações: correção de datas futuras, ajuste de valores negativos e fixação de tipos de dados.</li>
+            <li>Engenharia de atributos: educação, presença de crianças e adolescentes, número de reclamações e visitas distintas.</li>
+            <li>Conclusão: o dataset foi preparado para clustering e exportado como conjunto não escalado para análise posterior.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="data-geography" class="geography-panel">
+        <div class="panel-title">Data In Geography</div>
+        <div class="data-copy">
+          <p>This section uses geographic analysis to map customer location, density, and hotspot behavior.</p>
+          <ul>
+            <li>Mapas: scatter geográfico, mapa interativo de clientes e mapa de densidade hexagonal.</li>
+            <li>O padrão espacial confirma agrupamentos próximos a centros urbanos e à universidade.</li>
+            <li>O hotspot apresenta clientes mais jovens, maior uso de promoções e mais produtos distintos.</li>
+            <li>Este relatório reforça a importância de incluir localização na segmentação.</li>
+          </ul>
+        </div>
+      </section>
+
+      <section id="communities" class="communities-panel">
+        <div class="panel-title">Your 7 customer communities</div>
+        <div class="communities-grid">
+          <article class="community-card">
+            <div class="community-graphic graphic-1"></div>
+            <h3>Students</h3>
+            <p>23% · 7,821 customers</p>
+            <small>Young, price-sensitive and promotion-driven.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-2"></div>
+            <h3>Wellness Urbanites</h3>
+            <p>18% · 6,133 customers</p>
+            <small>Health-conscious shoppers valuing quality and sustainability.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-3"></div>
+            <h3>Tech Enthusiasts</h3>
+            <p>15% · 5,109 customers</p>
+            <small>Early adopters driven by technology and premium brands.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-4"></div>
+            <h3>Mature Independents</h3>
+            <p>14% · 4,769 customers</p>
+            <small>Independent and established customers valuing quality and convenience.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-5"></div>
+            <h3>Vegetarians</h3>
+            <p>12% · 4,086 customers</p>
+            <small>Plant-based shoppers with health-driven choices.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-6"></div>
+            <h3>Extended Households</h3>
+            <p>9% · 3,067 customers</p>
+            <small>Large families shopping for multiple generations.</small>
+          </article>
+          <article class="community-card">
+            <div class="community-graphic graphic-7"></div>
+            <h3>Makro Lovers</h3>
+            <p>9% · 3,075 customers</p>
+            <small>Bulk shoppers looking for value and practicality.</small>
+          </article>
+        </div>
+      </section>
+
+      <section class="overview-row">
+        <div class="metric-card">
+          <span class="metric-label">Revenue contribution</span>
+          <span class="metric-value">€2.48M</span>
+          <span class="metric-note">+18.7% vs Apr 1 - Apr 30</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Avg. order value</span>
+          <span class="metric-value">€68.21</span>
+          <span class="metric-note">+8.3% vs Apr 1 - Apr 30</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Repeat purchase rate</span>
+          <span class="metric-value">78%</span>
+          <span class="metric-note">+5.4% vs Apr 1 - Apr 30</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Retention rate</span>
+          <span class="metric-value">2.73</span>
+          <span class="metric-note">+6.1% vs Apr 1 - Apr 30</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">CLV (estimated)</span>
+          <span class="metric-value">€326</span>
+          <span class="metric-note">+11.8% vs Apr 1 - Apr 30</span>
+        </div>
+      </section>
+
+      <section class="insights-panel">
+        <div class="panel-header">
+          <h2>Preprocessing Insights</h2>
+          <p>Summarized from the notebook: data cleaning steps, feature engineering, and anomaly handling for customer segmentation.</p>
+        </div>
+        <div class="insights-grid">
+          <article class="insight-card">
+            <h3>Dataset Preparation</h3>
+            <p>The notebook loads and inspects <code>customer_info</code>, checks column types, and prepares a clean dataset for clustering.</p>
+          </article>
+          <article class="insight-card">
+            <h3>Missing Values</h3>
+            <p>Missing entries are identified and handled carefully. Future transaction years are set to <code>NaN</code> and later imputed instead of dropping rows.</p>
+          </article>
+          <article class="insight-card">
+            <h3>Invalid Data Fixes</h3>
+            <p>Negative promotion percentages and future years are corrected. Constant identifiers such as loyalty card numbers are removed from modeling.</p>
+          </article>
+          <article class="insight-card">
+            <h3>Feature Engineering</h3>
+            <p>Education level is extracted from customer name prefixes like <code>Bsc.</code>, <code>Msc.</code>, <code>Phd.</code>, then names are standardized to protect privacy.</p>
+          </article>
+          <article class="insight-card">
+            <h3>Outlier Detection</h3>
+            <p>Spending features show strong right skew and clear outliers. IQR capping is used to limit the influence of extreme values.</p>
+          </article>
+          <article class="insight-card">
+            <h3>Behavioral Patterns</h3>
+            <p>Temporal patterns such as typical transaction hour are preserved using angle-based transformations to keep cyclic proximity.</p>
+          </article>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>

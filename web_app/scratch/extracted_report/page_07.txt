@@ -1,0 +1,2 @@
+7 
+ Figure 2 — Distribution of every numerical variable in the raw dataset (histogram grid). 
