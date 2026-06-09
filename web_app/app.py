@@ -3557,12 +3557,6 @@ elif selected_page == "Customer Simulator":
 
     with _shop_col:
         st.subheader("🏪 Products")
-        st.markdown(f"""
-<div style='display:flex; gap:16px; margin-bottom:16px;'>
-  <img src='{PRODUTOS_TECH_URI}' style='width:50%; border-radius:12px; object-fit:cover;' />
-  <img src='{PRODUTOS_MEAT_URI}' style='width:50%; border-radius:12px; object-fit:cover;' />
-</div>
-""", unsafe_allow_html=True)
         _cs, _cc = st.columns([2, 1])
         _search = _cs.text_input("Search", placeholder="Search…", label_visibility="collapsed", key="shop_search")
         _cat_filter = _cc.selectbox(
