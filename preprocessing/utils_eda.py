@@ -924,9 +924,9 @@ def align_outlier_features(outlier_df, reference_df, current_year):
     out = apply_knn_imputation(outlier_df, n_neighbors=5, exclude_cols=out_exclude)
     out = engineer_clustering_features(out, current_year, keep_absolute_spend=True)
 
-    # Mirror the add_annual_spend_features step applied to the regular dataset
-    if "tenure" in out.columns:
-        out = add_annual_spend_features(out, tenure_col="tenure", spend_prefix="lifetime_spend_")
+    # Mirror the add_spend_share_features step applied to the regular dataset
+    if "lifetime_spend_groceries" in out.columns or any(c.startswith("lifetime_spend_") for c in out.columns):
+        out = add_spend_share_features(out, spend_prefix="lifetime_spend_", exclude_categories=["groceries"])
 
     # Mirror cast_nullable_int for integer columns
     int_cols = [
@@ -1270,20 +1270,82 @@ def export_capped_dataset(capped_df, output_dir="../datasets"):
     return capped_df
 
 
-def add_annual_spend_features(df, tenure_col="tenure", spend_prefix="lifetime_spend_", min_tenure=1):
-    """Add annual spend columns derived by dividing each lifetime spend by tenure. """
+def add_spend_share_features(
+    df,
+    spend_prefix="lifetime_spend_",
+    total_col="total_spend",
+    exclude_categories=None,
+    epsilon=1e-8,
+):
+    """Create spending-share (proportion) features for each category.
+
+    Instead of asking *how much* a customer spent on vegetables, a share feature
+    asks *what fraction of their total spending went to vegetables*.  This removes
+    the confound of overall spending power, so two customers with very different
+    budgets but the same purchasing mix end up in the same cluster.
+
+    Each new column is named  ``<category>_share``  (e.g. ``vegetables_share``).
+    The share is defined as::
+
+        category_share = lifetime_spend_<category> / (total_spend + epsilon)
+
+    where ``epsilon`` is a tiny constant that prevents division-by-zero for
+    customers whose recorded spend is exactly 0.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Input dataframe.  Must already contain lifetime_spend_* columns and,
+        optionally, a pre-computed ``total_spend`` column.
+    spend_prefix : str
+        Prefix that identifies the per-category spend columns (default
+        ``"lifetime_spend_"``).
+    total_col : str
+        Name of the column that holds total lifetime spend across all categories.
+        If it is not yet in ``df``, it is computed as the row-wise sum of all
+        ``spend_prefix`` columns.
+    exclude_categories : list[str] or None
+        Category names to skip when computing shares (e.g. ``["groceries"]`` to
+        omit groceries, since it tends to dominate and hide variation elsewhere).
+        Pass ``None`` to include every category.
+    epsilon : float
+        Small constant added to the denominator to avoid division by zero.
+
+    Returns
+    -------
+    pd.DataFrame
+        Copy of ``df`` with one new ``<category>_share`` column per included
+        spend category.  The original lifetime_spend_* columns are preserved.
+    """
     out = df.copy()
+    exclude_categories = exclude_categories or []
+
     spend_cols = [c for c in out.columns if c.startswith(spend_prefix)]
-    if tenure_col not in out.columns:
+    if not spend_cols:
         raise ValueError(
-            f"Column '{tenure_col}' not found. Run engineer_clustering_features first."
+            f"No columns found with prefix '{spend_prefix}'.  "
+            "Run engineer_clustering_features first."
         )
-    safe_tenure = out[tenure_col].clip(lower=min_tenure)
+
+    # Build (or reuse) the total spend denominator
+    if total_col not in out.columns:
+        out[total_col] = out[spend_cols].sum(axis=1)
+        print(f"'{total_col}' computed from {len(spend_cols)} spend columns.")
+
+    added = []
     for col in spend_cols:
-        annual_col = col.replace(spend_prefix, "annual_spend_")
-        out[annual_col] = out[col] / safe_tenure
-    added = len(spend_cols)
-    print(f"Annual spend features added: {added}  (tenure floored at {min_tenure})")
+        # Extract the category name from the column name
+        category = col[len(spend_prefix):]  # e.g. "vegetables"
+        if category in exclude_categories:
+            continue
+        share_col = f"{category}_share"
+        out[share_col] = out[col] / (out[total_col] + epsilon)
+        added.append(share_col)
+
+    print(
+        f"Spending-share features added: {len(added)}  "
+        f"(excluded: {exclude_categories if exclude_categories else 'none'})"
+    )
     return out
 
 

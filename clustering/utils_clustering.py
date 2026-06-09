@@ -687,8 +687,6 @@ def build_candidate_feature_sets(df):
     abss_no_groceries = [c for c in abss if c != "lifetime_spend_groceries"]
     abss_granular = [c for c in df.columns if c.startswith("lifetime_spend_")
                      and c != "lifetime_spend_technology" and c not in {"lifetime_spend_groceries"}]
-    annual = [c for c in df.columns if c.startswith("annual_spend_")]
-    annual_no_groceries = [c for c in annual if c != "annual_spend_groceries"]
     shares_no_groceries = [c for c in df.columns if c.endswith("_share")
                            and not c.startswith("grocery")]
     eng = [
@@ -719,11 +717,6 @@ def build_candidate_feature_sets(df):
     }
     if abss_granular and abss_granular != abss_no_groceries:
         sets["spend + promo granular tech"] = (abss_granular + promo, False)
-    # ---- annual spend (lifetime / tenure): only added when columns are present ----
-    if annual:
-        sets["annual_spend"] = (annual, False)
-        sets["annual_spend no groceries"] = (annual_no_groceries, False)
-        sets["annual_spend + promo no groceries"] = (annual_no_groceries + promo, False)
     return sets
 
 

@@ -145,7 +145,7 @@ def _radar_labels(features):
     """Shorten feature names for radar chart axes."""
     subs = {
         "lifetime_spend_": "",
-        "annual_spend_": "",
+        "_share": " share",
         "percentage_of_products_bought_promotion": "promotion_%",
         "log_total_spend": "log_spend",
         "lifetime_total_distinct_products": "distinct_products",
@@ -474,9 +474,7 @@ def plot_cluster_summary_card(
     color = CLUSTER_PALETTE[int(cluster_id) % len(CLUSTER_PALETTE)]
 
     if spend_features is None:
-        spend_features = [c for c in df.columns if c.startswith("annual_spend_")]
-        if not spend_features:
-            spend_features = [c for c in df.columns if c.startswith("lifetime_spend_")]
+        spend_features = [c for c in df.columns if c.startswith("lifetime_spend_")]
 
     if stat_features is None:
         stat_features = [
